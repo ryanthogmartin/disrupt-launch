@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DISRUPT MEDIA — Client Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── DISRUPT MEDIA DESIGN SYSTEM ── */
+:root {
+  --black:      #0A0A0A;
+  --dark:       #111111;
+  --surface:    #181818;
+  --surface2:   #1F1F1F;
+  --border:     #2A2A2A;
+  --border2:    #333333;
+  --white:      #FFFFFF;
+  --text:       #F0F0F0;
+  --muted:      #888888;
+  --faint:      #4A4A4A;
+  --green:      #7DC422;
+  --green-dim:  #5A9016;
+  --green-sub:  rgba(125,196,34,0.10);
+  --green-sub2: rgba(125,196,34,0.05);
+  --font-display: 'Bebas Neue', 'Arial Black', sans-serif;
+  --font-body:    'DM Sans', 'Helvetica Neue', sans-serif;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--black); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--dark); } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── TOPBAR ── */
+.topbar { background: var(--dark); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+.brand-name { font-family: var(--font-display); font-size: 28px; color: var(--white); letter-spacing: 1px; }
+.brand-dot { color: var(--green); }
+.brand-tag { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-left: 12px; }
+.topbar-right { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+
+/* ── PROGRESS ── */
+.progress-wrap { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 32px; display: flex; align-items: center; gap: 8px; }
+.prog-segs { display: flex; gap: 4px; flex: 1; }
+.prog-seg { flex: 1; height: 3px; background: var(--border2); border-radius: 2px; cursor: pointer; transition: background 0.3s; }
+.prog-seg.done { background: var(--green-dim); }
+.prog-seg.active { background: var(--green); }
+.prog-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
+
+/* ── SCREENS ── */
+.screen { display: none; animation: fadeUp 0.25s ease; }
+.screen.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── MODE SELECT ── */
+.mode-wrap { max-width: 640px; margin: 0 auto; padding: 72px 32px 80px; }
+.mode-eyebrow { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+.mode-headline { font-family: var(--font-display); font-size: 52px; color: var(--white); line-height: 1.05; margin-bottom: 16px; }
+.mode-sub { font-size: 15px; color: var(--muted); line-height: 1.7; margin-bottom: 40px; max-width: 480px; }
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+.mode-card { padding: 24px 20px; border: 1px solid var(--border2); border-radius: 4px; cursor: pointer; transition: all 0.2s; background: var(--surface); }
+.mode-card:hover { border-color: var(--green); background: var(--green-sub2); }
+.mode-card-title { font-family: var(--font-display); font-size: 22px; color: var(--white); margin-bottom: 6px; }
+.mode-card-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+.mode-callout { padding: 14px 18px; border-left: 3px solid var(--green); background: var(--green-sub2); font-size: 13px; color: var(--muted); }
+.mode-callout strong { color: var(--green); }
+
+/* ── QUESTIONNAIRE ── */
+.q-wrap { max-width: 720px; margin: 0 auto; padding: 0 32px 80px; }
+.section-intro { padding: 48px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
+.section-num { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+.section-title { font-family: var(--font-display); font-size: 40px; color: var(--white); margin-bottom: 6px; line-height: 1.1; }
+.section-tagline { font-size: 14px; color: var(--muted); }
+.guided-badge { display: inline-block; margin-top: 14px; padding: 8px 14px; border-left: 3px solid var(--green); background: var(--green-sub2); font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: 1.5px; text-transform: uppercase; }
+
+/* ── QUESTION BLOCKS ── */
+.q-block { margin-bottom: 36px; }
+.q-label { display: block; font-size: 15px; font-weight: 500; color: var(--white); margin-bottom: 8px; line-height: 1.5; }
+.key-badge { display: inline-block; background: var(--green); color: var(--black); font-family: var(--font-mono); font-size: 9px; font-weight: 500; letter-spacing: 0.1em; padding: 2px 7px; margin-left: 8px; vertical-align: middle; border-radius: 2px; }
+.q-hint { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-style: italic; }
+
+/* inputs */
+input[type="text"], textarea {
+  width: 100%; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-body); font-size: 15px;
+  border-radius: 3px; outline: none; transition: border-color 0.2s;
+}
+input[type="text"]:focus, textarea:focus { border-color: var(--green); }
+textarea { resize: vertical; min-height: 96px; }
+.has-error input[type="text"], .has-error textarea { border-color: #E74C3C; }
+.err-msg { font-family: var(--font-mono); font-size: 10px; color: #E74C3C; letter-spacing: 1px; margin-top: 5px; }
+
+/* radio / checkbox */
+.option-list { display: flex; flex-direction: column; gap: 8px; }
+.option-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--border2); border-radius: 3px; cursor: pointer; background: var(--surface); transition: all 0.15s; user-select: none; }
+.option-row:hover { border-color: var(--green-dim); }
+.option-row.selected { border-color: var(--green); background: var(--green-sub); }
+.option-box { width: 18px; height: 18px; min-width: 18px; border: 1.5px solid var(--border2); border-radius: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.option-radio { border-radius: 50%; }
+.option-row.selected .option-box { background: var(--green); border-color: var(--green); }
+.option-check { display: none; color: var(--black); font-size: 11px; font-weight: 700; line-height: 1; }
+.option-dot { display: none; width: 6px; height: 6px; border-radius: 50%; background: var(--black); }
+.option-row.selected .option-check { display: block; }
+.option-row.selected .option-radio-dot { display: block; }
+.option-label { font-size: 14px; color: var(--text); }
+
+/* rating table */
+.rating-table { width: 100%; border-collapse: collapse; }
+.rating-th { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; padding: 8px; text-align: center; }
+.rating-th:first-child { text-align: left; padding-left: 0; }
+.rating-tr { border-bottom: 1px solid var(--border); }
+.rating-tr:last-child { border-bottom: none; }
+.rating-td-label { font-size: 13px; color: var(--text); padding: 10px 8px 10px 0; }
+.rating-td-btn { text-align: center; padding: 6px 4px; }
+.r-btn { width: 34px; height: 34px; border: 1px solid var(--border2); border-radius: 3px; background: var(--surface); color: var(--muted); font-family: var(--font-display); font-size: 16px; cursor: pointer; transition: all 0.15s; }
+.r-btn:hover { border-color: var(--green-dim); color: var(--green); }
+.r-btn.active { background: var(--green); border-color: var(--green); color: var(--black); }
+
+/* nav */
+.q-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); }
+.btn-back { padding: 10px 24px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+.btn-back:hover { border-color: var(--muted); color: var(--text); }
+.btn-next { padding: 12px 28px; border: none; background: var(--green); color: var(--black); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+.btn-next:hover { background: #8ED428; }
+.btn-next:disabled { background: var(--faint); color: var(--muted); cursor: not-allowed; }
+.nav-err { font-family: var(--font-mono); font-size: 10px; color: #E74C3C; letter-spacing: 1px; }
+
+/* ── GENERATING SCREEN ── */
+.gen-wrap { max-width: 640px; margin: 0 auto; padding: 80px 32px; text-align: center; }
+.gen-logo { font-family: var(--font-display); font-size: 48px; color: var(--white); margin-bottom: 4px; }
+.gen-logo span { color: var(--green); }
+.gen-headline { font-family: var(--font-display); font-size: 32px; color: var(--text); margin-bottom: 12px; margin-top: 32px; }
+.gen-sub { font-size: 14px; color: var(--muted); margin-bottom: 48px; }
+.gen-steps { display: flex; flex-direction: column; gap: 12px; text-align: left; margin-bottom: 40px; }
+.gen-step { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); transition: all 0.4s; }
+.gen-step.active { border-color: var(--green); background: var(--green-sub2); }
+.gen-step.done { border-color: var(--green-dim); }
+.step-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex-shrink: 0; transition: all 0.3s; }
+.gen-step.active .step-indicator { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.gen-step.done .step-indicator { background: var(--green-dim); }
+.step-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); transition: color 0.3s; }
+.gen-step.active .step-label { color: var(--green); }
+.gen-step.done .step-label { color: var(--green-dim); }
+
+/* ── OUTPUT SCREEN ── */
+.out-wrap { max-width: 900px; margin: 0 auto; padding: 48px 32px 80px; }
+.out-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 16px; }
+.out-title { font-family: var(--font-display); font-size: 48px; color: var(--white); line-height: 1.05; }
+.out-title span { color: var(--green); }
+.btn-pdf { display: flex; align-items: center; gap: 8px; padding: 10px 22px; border: 1px solid var(--green); background: transparent; color: var(--green); font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+.btn-pdf:hover { background: var(--green); color: var(--black); }
+
+/* output tabs */
+.out-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 32px; overflow-x: auto; }
+.out-tab { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 20px; height: 44px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.out-tab:hover { color: var(--text); }
+.out-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* output content */
+.out-panel { display: none; }
+.out-panel.active { display: block; animation: fadeUp 0.2s ease; }
+.out-section { margin-bottom: 40px; }
+.out-section-label { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.out-content { font-size: 14px; color: var(--text); line-height: 1.9; white-space: pre-wrap; }
+.out-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 20px 22px; margin-bottom: 12px; }
+.out-card-title { font-family: var(--font-display); font-size: 20px; color: var(--white); margin-bottom: 8px; }
+.out-card-body { font-size: 14px; color: var(--muted); line-height: 1.8; }
+.out-week { display: grid; grid-template-columns: 80px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.out-week-num { background: var(--dark); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 28px; color: var(--green); border-right: 1px solid var(--border); }
+.out-week-body { padding: 14px 16px; }
+.out-week-theme { font-family: var(--font-display); font-size: 17px; color: var(--white); margin-bottom: 4px; }
+.out-week-posts { font-size: 13px; color: var(--muted); }
+.loading-pulse { display: inline-block; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ── PRINT / PDF ── */
+@media print {
+  body { background: white !important; color: #1A1A1A !important; font-family: Arial, sans-serif !important; }
+  .topbar, .progress-wrap, .out-tabs, .btn-pdf, .out-header .btn-pdf { display: none !important; }
+  .out-wrap { padding: 0 !important; max-width: 100% !important; }
+  .out-title, .out-card-title, .out-week-theme { color: #1A1A1A !important; font-family: Arial Black, sans-serif !important; }
+  .out-title span, .out-section-label { color: #5A9016 !important; }
+  .out-content, .out-card-body, .out-week-posts { color: #333333 !important; }
+  .out-card, .out-week { background: #F9F9F9 !important; border: 1px solid #CCCCCC !important; break-inside: avoid; }
+  .out-week-num { background: #F0F0F0 !important; color: #5A9016 !important; }
+  .out-panel { display: block !important; }
+  .out-tabs { display: none !important; }
+  .out-section { break-inside: avoid; }
+  .out-header { border-bottom: 2px solid #5A9016 !important; }
+  .print-section-break { page-break-before: always; }
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .topbar { padding: 0 16px; } .brand-tag { display: none; }
+  .mode-wrap, .q-wrap, .out-wrap { padding-left: 16px; padding-right: 16px; }
+  .mode-cards { grid-template-columns: 1fr; }
+  .mode-headline { font-size: 36px; }
+  .section-title { font-size: 32px; }
+  .out-title { font-size: 36px; }
+  .out-week { grid-template-columns: 60px 1fr; }
+  .out-week-num { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:baseline;gap:4px;">
+    <span class="brand-name">DISRUPT<span class="brand-dot">.</span></span>
+    <span class="brand-tag">Client Onboarding</span>
+  </div>
+  <div class="topbar-right" id="topbar-right">Step 1 of 6</div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-wrap" id="progress-wrap" style="display:none;">
+  <div class="prog-segs" id="prog-segs"></div>
+  <span class="prog-label" id="prog-label">Section 1</span>
+</div>
+
+<!-- SCREEN: MODE SELECT -->
+<div class="screen active" id="screen-mode">
+  <div class="mode-wrap">
+    <div class="mode-eyebrow">Client Onboarding</div>
+    <h1 class="mode-headline">Before we build<br>your growth system —<br>we need the intel.</h1>
+    <p class="mode-sub">Answer these questions and we'll generate your brand strategy, customer personas, and 90-day content roadmap on the spot. No waiting. No back-and-forth.</p>
+    <div class="mode-cards">
+      <div class="mode-card" onclick="startMode('self')">
+        <div class="mode-card-title">Self-serve →</div>
+        <div class="mode-card-sub">Fill this out on your own</div>
+      </div>
+      <div class="mode-card" onclick="startMode('guided')">
+        <div class="mode-card-title">Guided →</div>
+        <div class="mode-card-sub">With a DISRUPT strategist</div>
+      </div>
+    </div>
+    <div class="mode-callout"><strong>6 sections. ~20 minutes.</strong> The more specific you are, the sharper your output.</div>
+  </div>
+</div>
+
+<!-- SCREEN: QUESTIONNAIRE -->
+<div class="screen" id="screen-q">
+  <div class="q-wrap">
+    <div class="section-intro" id="section-intro"></div>
+    <div id="questions-container"></div>
+    <div class="q-nav">
+      <button class="btn-back" id="btn-back" onclick="goBack()">← BACK</button>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <span class="nav-err" id="nav-err"></span>
+        <button class="btn-next" id="btn-next" onclick="goNext()">NEXT SECTION →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: GENERATING -->
+<div class="screen" id="screen-gen">
+  <div class="gen-wrap">
+    <div class="gen-logo">DISRUPT<span>.</span></div>
+    <div class="gen-headline">Building your<br>growth system.</div>
+    <div class="gen-sub">Analyzing your responses. Generating your strategy.</div>
+    <div class="gen-steps" id="gen-steps">
+      <div class="gen-step active" id="gstep-0"><div class="step-indicator"></div><div class="step-label">Building goals &amp; scorecard</div></div>
+      <div class="gen-step" id="gstep-1"><div class="step-indicator"></div><div class="step-label">Analyzing your competitors</div></div>
+      <div class="gen-step" id="gstep-2"><div class="step-indicator"></div><div class="step-label">Building brand guidelines</div></div>
+      <div class="gen-step" id="gstep-3"><div class="step-indicator"></div><div class="step-label">Developing customer personas</div></div>
+      <div class="gen-step" id="gstep-4"><div class="step-indicator"></div><div class="step-label">Writing video scripts</div></div>
+      <div class="gen-step" id="gstep-5"><div class="step-indicator"></div><div class="step-label">Building pre-need lead engine</div></div>
+      <div class="gen-step" id="gstep-6"><div class="step-indicator"></div><div class="step-label">Writing 90-day content roadmap</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: RETRY -->
+<div class="screen" id="screen-retry">
+  <div class="gen-wrap">
+    <div class="gen-logo">DISRUPT<span>.</span></div>
+    <div class="gen-headline" style="color:#E74C3C;">Something went wrong.</div>
+    <div class="gen-sub" id="retry-msg">Generation failed. Your answers are saved.</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:32px;">
+      <button class="btn-next" style="width:100%;padding:16px;" onclick="retryGeneration()">↺ TRY AGAIN</button>
+      <button class="btn-back" style="width:100%;padding:14px;text-align:center;" onclick="goBackToForm()">← EDIT MY ANSWERS</button>
+    </div>
+    <div style="margin-top:24px;padding:14px 18px;border-left:3px solid var(--green);background:var(--green-sub2);font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;">
+      YOUR ANSWERS ARE SAVED — you won't need to start over
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: OUTPUT -->
+<div class="screen" id="screen-out">
+  <div class="out-wrap">
+    <div class="out-header">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">GROWTH SYSTEM — COMPLETE</div>
+        <div class="out-title">Your strategy<br>is <span>ready.</span></div>
+      </div>
+      <button class="btn-pdf" onclick="downloadPDF()">↓ DOWNLOAD PDF</button>
+    </div>
+    <div class="out-tabs">
+      <button class="out-tab active" onclick="showTab('goals',this)">Goals &amp; Scorecard</button>
+      <button class="out-tab" onclick="showTab('competitors',this)">Competitor Intel</button>
+      <button class="out-tab" onclick="showTab('brand',this)">Brand Guidelines</button>
+      <button class="out-tab" onclick="showTab('personas',this)">Personas</button>
+      <button class="out-tab" onclick="showTab('scripts',this)">Video Scripts</button>
+      <button class="out-tab" onclick="showTab('preneed',this)">Pre-Need Engine</button>
+      <button class="out-tab" onclick="showTab('roadmap',this)">90-Day Roadmap</button>
+    </div>
+    <div class="out-panel active" id="panel-goals"></div>
+    <div class="out-panel" id="panel-competitors"></div>
+    <div class="out-panel" id="panel-brand"></div>
+    <div class="out-panel" id="panel-personas"></div>
+    <div class="out-panel" id="panel-scripts"></div>
+    <div class="out-panel" id="panel-preneed"></div>
+    <div class="out-panel" id="panel-roadmap"></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+// After deploying your Cloudflare Worker, replace these two values:
+//   PROXY_URL   → your Worker URL, e.g. https://disrupt-proxy.YOUR-SUBDOMAIN.workers.dev
+//   PROXY_TOKEN → the DISRUPT_TOKEN secret you set in the Cloudflare Dashboard
+const PROXY_URL   = 'https://disrupt-proxy.disruptmedia.workers.dev';
+const PROXY_TOKEN = 'disrupt-2026-key';
+
+// ── QUESTION DATA ────────────────────────────────────────────────────────────
+const SECTIONS = [
+  {
+    id:'identity', label:'Identity & Positioning',
+    tagline:'Who you are. Who you\'re not. Why you win.',
+    questions:[
+      {id:'q1_1',type:'text',label:'Business name',ph:'Your funeral home / cemetery / company name'},
+      {id:'q1_2',type:'textarea',label:'Market you serve',ph:'Primary city + surrounding communities',hint:'Include any rural areas, satellite communities, or zip codes you actively serve.'},
+      {id:'q1_3',type:'text',label:'Years in business',ph:'e.g. Family-owned since 1981 — 43 years'},
+      {id:'q1_4',type:'radio',label:'Ownership structure',opts:['Independently owned','Family-owned group','Part of a corporate group','Partnership']},
+      {id:'q1_5',type:'textarea',label:'What do you do that your competitors don\'t or won\'t?',challenge:true,ph:'Skip \'compassionate service.\' What is your actual operational or experiential differentiator?',hint:'Think: facility, process, staff, technology, community ties, pricing model.'},
+      {id:'q1_6',type:'textarea',label:'What do families consistently thank you for that surprises you?',ph:'The thing you almost take for granted but means everything to them.'},
+      {id:'q1_7',type:'textarea',label:'If you could only run ONE message in your market forever — what is it?',challenge:true,ph:'A positioning truth you own. Not a tagline — a conviction.',hint:'Example: "We are the only home in [city] that never outsources.\"'},
+      {id:'q1_8',type:'textarea',label:'What perception are you actively fighting against?',ph:'What do families assume before they meet you? What must you overcome?'},
+    ]
+  },
+  {
+    id:'market', label:'Market Intelligence',
+    tagline:'Know your battlefield. Know your numbers.',
+    questions:[
+      {id:'q2_1',type:'textarea',label:'Name your top 3 competitors',ph:'Be specific. Include corporate chains if they\'re taking cases from you.'},
+      {id:'q2_2',type:'textarea',label:'What are they doing right that you have to counter?',ph:'Don\'t minimize the competition. Where are they genuinely strong?'},
+      {id:'q2_3',type:'textarea',label:'Where are they weak — and are you capitalizing on it?',challenge:true,ph:'Their blind spot is your opening. Be honest if you\'re not using it yet.'},
+      {id:'q2_4',type:'text',label:'Approximate case volume per year',ph:'e.g. 280 calls/year'},
+      {id:'q2_5',type:'text',label:'At-need vs. pre-need split (estimate)',ph:'e.g. 70% at-need / 30% pre-need'},
+      {id:'q2_6',type:'text',label:'Average revenue per case (approximate)',ph:'e.g. $7,200 average'},
+      {id:'q2_7',type:'checkboxes',label:'Current primary sources of new business',opts:['Word of mouth / referrals','Google search','Google Maps / GMB','Facebook','Walk-in / signage','Hospice / hospital referrals','Pre-need conversions','Other']},
+      {id:'q2_8',type:'text',label:'Additional cases per year that would make 12 months a success',ph:'A specific number, not "more."'},
+    ]
+  },
+  {
+    id:'audience', label:'Audience & Buyer Psychology',
+    tagline:'Who makes the call. What they fear. What they need to believe.',
+    questions:[
+      {id:'q3_1',type:'textarea',label:'Describe the person who most often calls you first',challenge:true,ph:'Age, gender, relationship to deceased, emotional state, time of day, what they say first.',hint:'Paint a specific picture. The more real this person, the sharper your content will be.'},
+      {id:'q3_2',type:'textarea',label:'Describe your ideal pre-planner',ph:'What triggers them? What do they fear? What do they want to control before they die?'},
+      {id:'q3_3',type:'textarea',label:'What is the #1 fear or hesitation of a family considering your firm?',ph:'Price? Being taken advantage of? Judgment? Not knowing what to ask?'},
+      {id:'q3_4',type:'textarea',label:'What does a family need to BELIEVE about you before they\'ll choose you?',challenge:true,ph:'The conviction they need before they dial your number instead of a competitor\'s.'},
+      {id:'q3_5',type:'rating',label:'Rate how much these buying triggers apply to your ideal client (1–5)',items:['Price / affordability','Local reputation / word of mouth','Digital presence / reviews','Personal connection with staff','Facility appearance','Speed of response','Cultural or religious alignment','Pre-need planning urgency']},
+    ]
+  },
+  {
+    id:'content', label:'Content DNA',
+    tagline:'Your voice. Your face. Your story.',
+    questions:[
+      {id:'q4_1',type:'text',label:'Describe your brand personality in 3 words',ph:'Not "caring, professional, compassionate." Go deeper.'},
+      {id:'q4_2',type:'checkboxes',label:'Brand tone — select all that apply',opts:['Direct and confident','Warm and community-oriented','Educational and informative','Bold and disruptive','Quiet and dignified','Storytelling and narrative-driven']},
+      {id:'q4_3',type:'textarea',label:'Who is the face (or faces) of your brand?',ph:'Owner, director, specific staff? Who will families come to recognize?'},
+      {id:'q4_4',type:'radio',label:'Video content comfort level',opts:['Ready — bring the cameras','Willing but nervous — need coaching','Prefer scripted / teleprompter','Not comfortable on camera — prefer graphics/B-roll','Open to a mix']},
+      {id:'q4_5',type:'textarea',label:'Any compelling client stories you can share (with permission)?',ph:'Even a general scenario counts. These become your most powerful content.',required:false},
+      {id:'q4_6',type:'textarea',label:'Community involvement or causes you\'re part of?',ph:'Sponsorships, events, organizations. Anything that roots you in this community.',required:false},
+      {id:'q4_7',type:'textarea',label:'What makes your facility visually distinct or worth showing?',ph:'Historic building? Chapel? Gardens? What\'s worth a camera shot?',required:false},
+      {id:'q4_8',type:'textarea',label:'What topics are absolutely OFF LIMITS for your content?',challenge:true,ph:'Specific services, family situations, sensitive history. Anything we should never touch.'},
+    ]
+  },
+  {
+    id:'offer', label:'Offer Architecture',
+    tagline:'What you sell. How you\'re priced. Where you win.',
+    questions:[
+      {id:'q5_1',type:'checkboxes',label:'Primary service offerings',opts:['At-need traditional burial','At-need cremation','Pre-need burial planning','Pre-need cremation planning','Celebration of life / non-traditional','Veterans services','Cemetery / grave services','Grief support / aftercare','Transportation / repatriation']},
+      {id:'q5_2',type:'radio',label:'Pricing position relative to your market',opts:['Premium / top of market','Mid-market / competitive','Value / accessible pricing','We compete on service, not price']},
+      {id:'q5_3',type:'textarea',label:'Most differentiated service competitors can\'t easily copy',challenge:true,ph:'What\'s yours and yours alone? Technology, facility, people, process?'},
+      {id:'q5_4',type:'textarea',label:'What service do you WISH more families knew about?',ph:'The hidden gem. Undersold, undermarketed, undervalued.'},
+      {id:'q5_5',type:'text',label:'Google review count + current rating',ph:'e.g. 84 reviews, 4.9 stars'},
+      {id:'q5_6',type:'checkboxes',label:'Currently running paid ads on',opts:['Google Ads / Search','Facebook / Instagram Ads','YouTube','Yelp','No paid ads currently']},
+    ]
+  },
+  {
+    id:'growth', label:'Growth Objectives',
+    tagline:'Where you\'re going. How fast. What success looks like.',
+    questions:[
+      {id:'q6_1',type:'textarea',label:'What does success look like at 90 days with DISRUPT?',challenge:true,ph:'Specific and measurable. What would make you say "this is working"?'},
+      {id:'q6_2',type:'textarea',label:'What does success look like at 12 months?',ph:'Cases, revenue, market position, reputation — paint the full picture.'},
+      {id:'q6_3',type:'textarea',label:'What has been tried before that didn\'t work — and why?',ph:'Don\'t sugarcoat it. Past failures are intelligence.',required:false},
+      {id:'q6_4',type:'checkboxes',label:'Primary growth focus for the next 90 days',opts:['Build brand awareness — get known','Generate pre-need leads','Dominate at-need Google search','Launch video content to build trust','Grow social media following','Improve and increase Google reviews','All of the above']},
+      {id:'q6_5',type:'text',label:'Monthly marketing investment range',ph:'e.g. $2,000–$3,500/month'},
+      {id:'q6_6',type:'textarea',label:'Who internally is accountable for this engagement?',ph:'Name, role. The person who will approve content, track results, keep DISRUPT honest.',required:false},
+      {id:'q6_7',type:'textarea',label:'Anything else DISRUPT needs to know?',ph:'Secrets, fears, wild ambitions, context we can\'t get from the above.',required:false},
+    ]
+  }
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let mode = null;
+let currentSection = 0;
+let answers = {};
+let generatedOutput = { goals: '', competitors: '', brand: '', personas: '', scripts: '', preneed: '', roadmap: '', week1: '' };
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function startMode(m) {
+  mode = m;
+  restoreAnswers();
+  document.getElementById('screen-mode').classList.remove('active');
+  document.getElementById('screen-q').classList.add('active');
+  document.getElementById('progress-wrap').style.display = 'flex';
+  document.getElementById('topbar-right').textContent = 'Section 1 of 6';
+  buildProgressBar();
+  renderSection(0);
+}
+
+// ── PROGRESS BAR ─────────────────────────────────────────────────────────────
+function buildProgressBar() {
+  const segs = document.getElementById('prog-segs');
+  segs.innerHTML = '';
+  SECTIONS.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'prog-seg' + (i === 0 ? ' active' : '');
+    d.title = s.label;
+    d.onclick = () => { if (i < currentSection) jumpTo(i); };
+    d.id = 'seg-' + i;
+    segs.appendChild(d);
+  });
+}
+
+function updateProgressBar() {
+  SECTIONS.forEach((_, i) => {
+    const seg = document.getElementById('seg-' + i);
+    if (!seg) return;
+    seg.className = 'prog-seg' + (i < currentSection ? ' done' : i === currentSection ? ' active' : '');
+    seg.style.cursor = i < currentSection ? 'pointer' : 'default';
+  });
+  document.getElementById('prog-label').textContent = SECTIONS[currentSection]?.label || '';
+  document.getElementById('topbar-right').textContent = `Section ${currentSection + 1} of ${SECTIONS.length}`;
+}
+
+// ── RENDER SECTION ───────────────────────────────────────────────────────────
+function renderSection(idx) {
+  const s = SECTIONS[idx];
+  currentSection = idx;
+  updateProgressBar();
+
+  // Header
+  const intro = document.getElementById('section-intro');
+  intro.innerHTML = `
+    <div class="section-num">Section ${idx + 1} of ${SECTIONS.length}</div>
+    <h2 class="section-title">${s.label}</h2>
+    <p class="section-tagline">${s.tagline}</p>
+    ${mode === 'guided' ? '<div class="guided-badge">Guided Mode — DISRUPT strategist is leading this section</div>' : ''}
+  `;
+
+  // Questions
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '';
+  s.questions.forEach(q => container.appendChild(buildQuestion(q)));
+
+  // Nav
+  document.getElementById('btn-back').style.visibility = idx === 0 ? 'hidden' : 'visible';
+  const btnNext = document.getElementById('btn-next');
+  btnNext.textContent = idx === SECTIONS.length - 1 ? 'GENERATE MY STRATEGY →' : 'NEXT SECTION →';
+  document.getElementById('nav-err').textContent = '';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── BUILD QUESTION ───────────────────────────────────────────────────────────
+function buildQuestion(q) {
+  const wrap = document.createElement('div');
+  wrap.className = 'q-block';
+  wrap.id = 'qblock-' + q.id;
+
+  let labelHtml = `<label class="q-label" for="${q.id}">${q.label}${q.challenge ? '<span class="key-badge">KEY</span>' : ''}</label>`;
+  if (q.hint) labelHtml += `<p class="q-hint">${q.hint}</p>`;
+
+  let inputHtml = '';
+  const val = answers[q.id];
+
+  if (q.type === 'text') {
+    inputHtml = `<input type="text" id="${q.id}" placeholder="${q.ph || ''}" value="${escHtml(val || '')}" oninput="saveAnswer('${q.id}', this.value)">`;
+  } else if (q.type === 'textarea') {
+    inputHtml = `<textarea id="${q.id}" placeholder="${q.ph || ''}" oninput="saveAnswer('${q.id}', this.value)">${escHtml(val || '')}</textarea>`;
+  } else if (q.type === 'radio') {
+    inputHtml = '<div class="option-list">' + q.opts.map(opt => {
+      const sel = val === opt;
+      return `<div class="option-row${sel ? ' selected' : ''}" onclick="selectRadio('${q.id}', '${escAttr(opt)}', this)">
+        <div class="option-box option-radio">${sel ? '<div class="option-dot option-radio-dot" style="display:block;"></div>' : '<div class="option-radio-dot" style="display:none;"></div>'}</div>
+        <span class="option-label">${opt}</span></div>`;
+    }).join('') + '</div>';
+  } else if (q.type === 'checkboxes') {
+    const checked = val || [];
+    inputHtml = '<div class="option-list">' + q.opts.map(opt => {
+      const sel = checked.includes(opt);
+      return `<div class="option-row${sel ? ' selected' : ''}" onclick="toggleCheck('${q.id}', '${escAttr(opt)}', this)">
+        <div class="option-box">${sel ? '<span class="option-check" style="display:block;">✓</span>' : '<span class="option-check"></span>'}</div>
+        <span class="option-label">${opt}</span></div>`;
+    }).join('') + '</div>';
+  } else if (q.type === 'rating') {
+    const ratings = val || {};
+    inputHtml = `<table class="rating-table"><thead><tr>
+      <th class="rating-th">Trigger</th>
+      ${[1,2,3,4,5].map(n => `<th class="rating-th">${n}</th>`).join('')}
+    </tr></thead><tbody>
+    ${q.items.map(item => {
+      const r = ratings[item] || 0;
+      return `<tr class="rating-tr"><td class="rating-td-label">${item}</td>
+      ${[1,2,3,4,5].map(n => `<td class="rating-td-btn"><button class="r-btn${r===n?' active':''}" onclick="setRating('${q.id}','${escAttr(item)}',${n},this)">${n}</button></td>`).join('')}
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+  }
+
+  wrap.innerHTML = labelHtml + inputHtml + '<div class="err-msg" id="err-' + q.id + '"></div>';
+  return wrap;
+}
+
+// ── ANSWER HANDLERS ──────────────────────────────────────────────────────────
+function saveAnswer(id, val) { answers[id] = val; clearErr(id); persistAnswers(); }
+
+function selectRadio(id, val, el) {
+  answers[id] = val;
+  clearErr(id);
+  const rows = el.closest('.option-list').querySelectorAll('.option-row');
+  rows.forEach(r => {
+    const dot = r.querySelector('.option-radio-dot');
+    r.classList.remove('selected');
+    if (dot) dot.style.display = 'none';
+  });
+  el.classList.add('selected');
+  const dot = el.querySelector('.option-radio-dot');
+  if (dot) dot.style.display = 'block';
+  persistAnswers();
+}
+
+function toggleCheck(id, val, el) {
+  if (!answers[id]) answers[id] = [];
+  const arr = answers[id];
+  const i = arr.indexOf(val);
+  if (i === -1) { arr.push(val); el.classList.add('selected'); const c = el.querySelector('.option-check'); if(c) c.style.display='block'; }
+  else { arr.splice(i, 1); el.classList.remove('selected'); const c = el.querySelector('.option-check'); if(c) c.style.display='none'; }
+  clearErr(id);
+  persistAnswers();
+}
+
+function setRating(id, item, n, btn) {
+  if (!answers[id]) answers[id] = {};
+  answers[id][item] = n;
+  clearErr(id);
+  persistAnswers();
+  const row = btn.closest('tr');
+  row.querySelectorAll('.r-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function clearErr(id) {
+  const el = document.getElementById('err-' + id);
+  if (el) el.textContent = '';
+  const block = document.getElementById('qblock-' + id);
+  if (block) block.classList.remove('has-error');
+}
+
+// ── PERSISTENCE ──────────────────────────────────────────────────────────────
+function persistAnswers() {
+  try { localStorage.setItem('disrupt_answers', JSON.stringify(answers)); } catch(e) {}
+}
+
+function restoreAnswers() {
+  try {
+    const saved = localStorage.getItem('disrupt_answers');
+    if (saved) { answers = JSON.parse(saved); return true; }
+  } catch(e) {}
+  return false;
+}
+
+function clearSavedAnswers() {
+  try { localStorage.removeItem('disrupt_answers'); } catch(e) {}
+}
+
+// ── VALIDATION ───────────────────────────────────────────────────────────────
+function validateSection() {
+  const s = SECTIONS[currentSection];
+  let valid = true;
+  s.questions.forEach(q => {
+    if (q.required === false) return;
+    if (q.type === 'rating') return;
+    const val = answers[q.id];
+    const empty = !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '');
+    if (empty) {
+      valid = false;
+      const el = document.getElementById('err-' + q.id);
+      if (el) el.textContent = 'This field is required.';
+      const block = document.getElementById('qblock-' + q.id);
+      if (block) block.classList.add('has-error');
+    }
+  });
+  return valid;
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+function goNext() {
+  if (!validateSection()) { document.getElementById('nav-err').textContent = 'Complete required fields above.'; return; }
+  document.getElementById('nav-err').textContent = '';
+  if (currentSection < SECTIONS.length - 1) { renderSection(currentSection + 1); }
+  else { startGeneration(); }
+}
+
+function goBack() { if (currentSection > 0) renderSection(currentSection - 1); }
+function jumpTo(i) { renderSection(i); }
+
+// ── GENERATION ───────────────────────────────────────────────────────────────
+async function startGeneration() {
+  // Switch to generating screen
+  document.getElementById('screen-q').classList.remove('active');
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('screen-gen').classList.add('active');
+  document.getElementById('topbar-right').textContent = 'Generating...';
+
+  const context = buildContext();
+
+  try {
+    await generateGoals(context);
+    await generateCompetitors(context);
+    await generateBrand(context);
+    await generatePersonas(context);
+    await generateScripts(context);
+    await generatePreneed(context);
+    await generateRoadmap(context);
+    await generateWeek1(context);
+    showOutput();
+    deliverToDisrupt();
+  } catch(e) {
+    console.error(e);
+    showRetryScreen(e.message);
+  }
+}
+
+function setGenStep(idx) {
+  for (let i = 0; i < 7; i++) {
+    const el = document.getElementById('gstep-' + i);
+    if (!el) continue;
+    el.classList.remove('active', 'done');
+    if (i < idx) el.classList.add('done');
+    else if (i === idx) el.classList.add('active');
+  }
+}
+
+function buildContext() {
+  const g = id => {
+    const v = answers[id];
+    if (!v) return '[Not provided]';
+    if (Array.isArray(v)) return v.length ? v.join(', ') : '[Not provided]';
+    if (typeof v === 'object') return Object.entries(v).map(([k,n]) => `${k}: ${n}/5`).join(' | ');
+    return v.trim() || '[Not provided]';
+  };
+  return `
+BUSINESS: ${g('q1_1')}
+MARKET: ${g('q1_2')}
+YEARS IN BUSINESS: ${g('q1_3')}
+OWNERSHIP: ${g('q1_4')}
+CORE DIFFERENTIATOR: ${g('q1_5')}
+UNEXPECTED STRENGTH: ${g('q1_6')}
+MARKET MESSAGE: ${g('q1_7')}
+PERCEPTION TO FIGHT: ${g('q1_8')}
+TOP COMPETITORS: ${g('q2_1')}
+COMPETITOR STRENGTHS: ${g('q2_2')}
+COMPETITOR WEAKNESSES: ${g('q2_3')}
+ANNUAL CASE VOLUME: ${g('q2_4')}
+AT-NEED/PRE-NEED SPLIT: ${g('q2_5')}
+AVG REVENUE/CASE: ${g('q2_6')}
+INBOUND SOURCES: ${g('q2_7')}
+GROWTH TARGET (12mo): ${g('q2_8')}
+PRIMARY CALLER PROFILE: ${g('q3_1')}
+IDEAL PRE-PLANNER: ${g('q3_2')}
+FAMILY'S #1 FEAR: ${g('q3_3')}
+BELIEF NEEDED TO CHOOSE THEM: ${g('q3_4')}
+BUYING TRIGGERS: ${g('q3_5')}
+BRAND PERSONALITY: ${g('q4_1')}
+BRAND TONE: ${g('q4_2')}
+ON-CAMERA TALENT: ${g('q4_3')}
+VIDEO COMFORT: ${g('q4_4')}
+CLIENT STORIES: ${g('q4_5')}
+COMMUNITY INVOLVEMENT: ${g('q4_6')}
+FACILITY VISUAL ASSETS: ${g('q4_7')}
+OFF LIMITS: ${g('q4_8')}
+SERVICES: ${g('q5_1')}
+PRICING POSITION: ${g('q5_2')}
+TOP DIFFERENTIATOR: ${g('q5_3')}
+UNDERSOLD SERVICE: ${g('q5_4')}
+GOOGLE REVIEWS: ${g('q5_5')}
+PAID ADS: ${g('q5_6')}
+90-DAY SUCCESS: ${g('q6_1')}
+12-MONTH SUCCESS: ${g('q6_2')}
+PAST FAILURES: ${g('q6_3')}
+GROWTH FOCUS: ${g('q6_4')}
+BUDGET: ${g('q6_5')}`;
+}
+
+async function callClaude(systemPrompt, userPrompt) {
+  const res = await fetch(PROXY_URL + '/ai', {
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-cache',
+    headers: {
+      'Content-Type':    'application/json',
+      'X-Disrupt-Token': PROXY_TOKEN,
+      'Accept':          'application/json',
+    },
+    body: JSON.stringify({
+      model:      'claude-sonnet-4-5',
+      max_tokens: 4000,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userPrompt }],
+    }),
+  });
+  if (!res.ok) { let err = {}; try { err = await res.json(); } catch(e) {} throw new Error(err.error?.message || 'Server error ' + res.status); }
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+async function showRetryScreen(msg) {
+  document.getElementById('screen-gen').classList.remove('active');
+  document.getElementById('screen-retry').classList.add('active');
+  document.getElementById('retry-msg').textContent = (msg || 'Generation failed.') + ' Your answers are saved — hit Try Again.';
+}
+
+function retryGeneration() {
+  document.getElementById('screen-retry').classList.remove('active');
+  document.getElementById('screen-gen').classList.add('active');
+  // Reset gen steps
+  for (let i = 0; i < 7; i++) {
+    const el = document.getElementById('gstep-' + i);
+    if (el) { el.classList.remove('active','done'); }
+  }
+  document.getElementById('gstep-0').classList.add('active');
+  // Reset generated output
+  generatedOutput = { goals: '', competitors: '', brand: '', personas: '', scripts: '', preneed: '', roadmap: '', week1: '' };
+  startGeneration();
+}
+
+function goBackToForm() {
+  document.getElementById('screen-retry').classList.remove('active');
+  document.getElementById('screen-q').classList.add('active');
+  document.getElementById('progress-wrap').style.display = 'flex';
+  renderSection(currentSection);
+}
+
+function deliverToDisrupt() {
+  // Fire-and-forget: emails answers + full output to you, logs to Google Sheets
+  try {
+    fetch(PROXY_URL + '/deliver', {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'application/json', 'X-Disrupt-Token': PROXY_TOKEN, 'Accept': 'application/json' },
+      body: JSON.stringify({
+        businessName: answers.q1_1 || 'Unknown',
+        answers,
+        output: generatedOutput,
+      }),
+    });
+  } catch(e) {
+    console.warn('Delivery notification failed (non-blocking):', e.message);
+  }
+}
+
+const SYSTEM = `You are the strategic AI engine for DISRUPT Media, a growth agency for deathcare companies (funeral homes, cemeteries, crematories). DISRUPT's core philosophy: Best known beats best. Visibility creates familiarity. Familiarity creates trust. Trust drives decisions.
+
+WRITING RULES — apply to every word you produce:
+- Never use: "compassion," "dignity," "we care," "trusted partner," "journey," "in your time of need" as positioning statements. These are table stakes, not differentiators.
+- Write like a challenger brand disrupting a stagnant market. Short declarative sentences. Active voice.
+- Lead with market truth, not service features.
+- Every message must make a family feel this home was built specifically for them.
+- Be specific. Vague is invisible. Specific is memorable.
+- Output clean text with clear section headers using ALL CAPS labels. No markdown fences. No asterisks. Use plain line breaks for structure.`;
+
+async function generateGoals(ctx) {
+  setGenStep(0);
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate a Goals & Scorecard for this funeral home. Structure EXACTLY as follows with these ALL CAPS headers:\n\nGROWTH TARGETS\nState the client's specific 90-day and 12-month goals as a clear scorecard. Pull from their stated case volume, growth target, budget, and success definitions. Be specific — use their actual numbers. Format as:\n90-DAY TARGETS\n[List 5-6 specific measurable targets: case volume goal, pre-need leads, Google review count, social reach, video views, etc.]\n\n12-MONTH TARGETS\n[List 5-6 specific measurable targets with numbers]\n\nROI PROJECTION\nBased on their current case volume, average revenue per case, and stated growth target, calculate:\n- Cases needed to break even on marketing investment\n- Revenue upside if they hit 90-day targets\n- Revenue upside if they hit 12-month targets\n- Cost per acquired case at their stated budget\n\nSUCCESS METRICS — WEEK BY WEEK\nBreak the 90 days into 3 monthly checkpoints. For each month state exactly what numbers they should be hitting to know the system is working. Be specific to their market and their answers.\n\nKEY ASSUMPTIONS\nState 3-4 honest assumptions this plan is built on. What has to be true for these targets to be achievable?`;
+  generatedOutput.goals = await callClaude(SYSTEM, prompt);
+}
+
+async function generateCompetitors(ctx) {
+  setGenStep(1);
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate a Competitor Intelligence Report for this funeral home. Structure EXACTLY as follows:\n\nCOMPETITIVE LANDSCAPE\n2-3 sentences on the overall competitive dynamic in their market. Who currently owns awareness? What is the dominant positioning?\n\nFor EACH of the named competitors, generate a full block using this exact format:\n\nCOMPETITOR: [Name]\nMARKET POSITION: [What they own — awareness, pricing, segment, reputation]\nSTRENGTHS: [2-3 specific things they do well that this client must counter]\nWEAKNESSES: [2-3 specific vulnerabilities — operational, digital, positioning, or service]\nATTACK ANGLE: [The specific content move, positioning statement, or campaign that directly takes market share from this competitor. Be direct and tactical.]\nMESSAGE TO STEAL: [One specific message or claim this competitor uses that can be neutralized or co-opted]\n\n[Repeat for each named competitor]\n\nCOMPETITIVE POSITIONING MAP\nDescribe where this client sits vs. each competitor on two axes: Awareness (low to high) and Trust/Differentiation (generic to distinctive). Be honest — if they are currently low awareness, say so.\n\nTHE OPENING\nThe single biggest competitive gap in this market that this client can own in 90 days if they execute. One paragraph. Specific and direct.`;
+  generatedOutput.competitors = await callClaude(SYSTEM, prompt);
+}
+
+async function generateBrand(ctx) {
+  setGenStep(2);
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate comprehensive brand guidelines for this funeral home. Structure exactly as follows:\n\nPOSITIONING STATEMENT\nA 2-3 sentence challenger-brand positioning statement. Bold, specific, ownable.\n\nBRAND PROMISE\nOne sentence. What this business commits to every family, every time.\n\nMESSAGE PILLARS\nPILLAR 1: [Name]\n[Headline] — [2-sentence support statement]\n\nPILLAR 2: [Name]\n[Headline] — [2-sentence support statement]\n\nPILLAR 3: [Name]\n[Headline] — [2-sentence support statement]\n\nVOICE & TONE GUIDE\nDO: [5 specific examples of language to use]\nDON'T: [5 specific examples of language to avoid — be specific to this business]\n\nTAGLINE OPTIONS\n1. [Tagline] — [One-line rationale]\n2. [Tagline] — [One-line rationale]\n3. [Tagline] — [One-line rationale]\n4. [Tagline] — [One-line rationale]\n5. [Tagline] — [One-line rationale]\nRECOMMENDED: [Number and reason]\n\nBRAND ANTI-PATTERNS\n5 specific things this brand should NEVER say, do, or be associated with. Be direct.`;
+  generatedOutput.brand = await callClaude(SYSTEM, prompt);
+  setGenStep(2);
+}
+
+async function generatePersonas(ctx) {
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate 3 detailed customer personas. Structure exactly as follows:\n\nPERSONA 1: THE AT-NEED CALLER\nNAME & PROFILE: [Name, age, occupation, family situation]\nTHE MOMENT: [The specific scene when they make the call — time, place, emotional state]\nFIRST GOOGLE SEARCH: [Exact search query they type first]\nTOP 3 FEARS: [Numbered list]\nTRUST TRIGGER: [The one thing that would immediately build trust]\nWINNING MESSAGE: [The exact message that makes them choose this home over the competition]\nREVIEW DRIVER: [What would make them leave a 5-star review]\n\nPERSONA 2: THE PRE-PLANNER\nNAME & PROFILE: [Name, age, occupation, family situation]\nTHE MOMENT: [What triggered them to start planning now]\nFIRST GOOGLE SEARCH: [Exact search query]\nTOP 3 FEARS: [Numbered list]\nTRUST TRIGGER: [The one thing that builds immediate credibility]\nWINNING MESSAGE: [What gets them to schedule a pre-need consultation]\nREVIEW DRIVER: [What makes them refer others]\n\nPERSONA 3: THE ADULT CHILD RESEARCHER\nNAME & PROFILE: [Name, age, occupation — this is the person doing online research for a parent]\nTHE MOMENT: [Why they're researching now]\nFIRST GOOGLE SEARCH: [Exact search query]\nTOP 3 FEARS: [Numbered list]\nTRUST TRIGGER: [What convinces them to recommend this home to their family]\nWINNING MESSAGE: [What turns a researcher into an advocate]\nREVIEW DRIVER: [What makes them leave a review on behalf of the family]`;
+  generatedOutput.personas = await callClaude(SYSTEM, prompt);
+  setGenStep(3);
+}
+
+async function generateScripts(ctx) {
+  setGenStep(4);
+  const scriptPrompt = [
+    'CLIENT INTELLIGENCE:\n' + ctx,
+    '\n\nGenerate 5 complete video scripts for social media ready to shoot. Use EXACTLY this structure for each:\n\n',
+    'SCRIPT 1: [TITLE]\n',
+    'PLATFORM: [Facebook / Instagram Reels / Both]\n',
+    'RUNTIME: [Target seconds]\n',
+    'PERSONA TARGET: [Which buyer this is written for]\n\n',
+    'HOOK (0-3 sec): [Word for word. Pattern interrupt. No slow intros. No Hi I am.]\n\n',
+    'PROBLEM (3-15 sec): [Word for word. The market truth or family pain point specific to this market.]\n\n',
+    'CREDIBILITY (15-25 sec): [Word for word. Why this home specifically. Use their differentiator.]\n\n',
+    'PROOF (25-40 sec): [Word for word. A specific story, fact, or operational detail.]\n\n',
+    'CTA (final 5 sec): [Word for word. One clear action tied to the emotional moment.]\n\n',
+    'DIRECTOR NOTES: [2-3 sentences on how to shoot this — location, B-roll, on-screen visuals]\n\n',
+    '---\n\n',
+    'Script 1: Their single biggest operational differentiator as the hook\n',
+    'Script 2: Pre-need urgency targeting the pre-planner persona trigger\n',
+    'Script 3: Directly addressing the family number 1 stated fear\n',
+    'Script 4: Community identity using their specific community involvement\n',
+    'Script 5: Anti-corporate positioning against the biggest named competitor without naming them',
+  ].join('');
+  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt);
+}
+
+async function generatePreneed(ctx) {
+  setGenStep(5);
+  const preneedPrompt = [
+    'CLIENT INTELLIGENCE:\n' + ctx,
+    '\n\nGenerate a complete Pre-Need Lead Engine. Use EXACTLY these ALL CAPS section headers:\n\n',
+    'PRE-NEED STRATEGY\n',
+    '2-3 sentences on the pre-need opportunity specific to this market and their stated split.\n\n',
+    'LEAD MAGNET OFFER\n',
+    'A compelling named offer tied to their differentiator. Include:\n',
+    'OFFER NAME: [Specific ownable name]\n',
+    'OFFER DESCRIPTION: [What they get — 2-3 sentences]\n',
+    'WHY IT WORKS: [Why this reduces resistance for their pre-planner persona]\n\n',
+    'LANDING PAGE COPY\n',
+    'Write complete publish-ready landing page copy:\n',
+    'HEADLINE: [Main headline — pattern interrupt, specific, emotional]\n',
+    'SUBHEADLINE: [Supporting line clarifying the offer]\n',
+    'BODY COPY: [3-4 short paragraphs — problem, solution, proof, urgency]\n',
+    'BULLET POINTS: [4-5 specific benefit bullets]\n',
+    'CTA BUTTON TEXT: [Exact button text]\n\n',
+    'FOLLOW-UP SEQUENCE\n',
+    'A 5-touch follow-up for every pre-need lead:\n\n',
+    'SAME DAY — Phone call script\n',
+    '[Word for word 60-90 second script. Warm, not salesy. Director makes the call.]\n\n',
+    'DAY 2 — Email\n',
+    'Subject line: [Exact subject]\n',
+    'Body: [Full email copy 150-200 words]\n\n',
+    'DAY 7 — Phone call script\n',
+    '[Word for word. Shorter. Soft urgency without pressure.]\n\n',
+    'DAY 14 — Text message\n',
+    '[Exact text under 160 characters. Personal, from the director by name.]\n\n',
+    'DAY 30 — Final email\n',
+    'Subject line: [Exact subject]\n',
+    'Body: [Full email 100-150 words. No pressure. Leaves door open.]\n\n',
+    'FACEBOOK AD COPY\n',
+    'One complete Facebook ad for pre-need lead generation:\n',
+    'HEADLINE: [Ad headline]\n',
+    'PRIMARY TEXT: [Ad copy 2-3 short paragraphs]\n',
+    'CTA BUTTON: [Button text]\n',
+    'TARGET AUDIENCE NOTES: [Age, interests, behaviors to target]',
+  ].join('');
+  generatedOutput.preneed = await callClaude(SYSTEM, preneedPrompt);
+}
+
+
+async function generateRoadmap(ctx) {
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate a complete 90-day social media content roadmap. Structure exactly as follows:\n\nCONTENT STRATEGY OVERVIEW\n[3-4 sentences on the strategic approach for this specific business]\n\nCONTENT PILLARS\nPILLAR 1: [Name] — [One-line description]\nPILLAR 2: [Name] — [One-line description]\nPILLAR 3: [Name] — [One-line description]\n\nPLATFORM STRATEGY\nFACEBOOK: [Specific strategy, posting frequency, content types]\nINSTAGRAM: [Specific strategy, posting frequency, content types]\nGOOGLE BUSINESS: [Specific strategy for posts and review generation]\n\nWEEKLY THEMES — MONTHS 1-3\n[Generate 13 weeks. Each week format:]\nWEEK [N]: [THEME TITLE]\nFocus: [One sentence on what this week builds toward]\nPosts: [3 specific post concepts with format — e.g., "Facebook video: Owner talks about [specific topic]"]\n\nREVIEW GENERATION STRATEGY\n[Specific 4-step plan to generate 10+ Google reviews in the first 30 days]\n\n90-DAY MILESTONES\nDAY 30: [Specific measurable goal]\nDAY 60: [Specific measurable goal]\nDAY 90: [Specific measurable goal]`;
+  generatedOutput.roadmap = await callClaude(SYSTEM, prompt);
+  setGenStep(6);
+}
+
+// ── RENDER OUTPUT ────────────────────────────────────────────────────────────
+
+async function generateWeek1(ctx) {
+  setGenStep(6); // runs alongside roadmap step
+  const w1prompt = [
+    'CLIENT INTELLIGENCE:\n' + ctx,
+    '\n\nGenerate a complete Week 1 Content Calendar — 7 days, 2 posts per day (14 posts total).',
+    ' All 7 posts are Facebook posts.',
+    ' These posts must align with Week 1 of the 90-day roadmap theme.',
+    ' Every post must be written, specific, and ready to publish — not a template.\n\n',
+    'For EACH of the 14 posts use EXACTLY this structure:\n\n',
+    'DAY [N] — [PLATFORM]\n',
+    'POST TYPE: [Video / Photo / Text / Carousel]\n',
+    'VISUAL DIRECTION: [Precise instruction — who to film or photograph, where, what they should be doing or saying.',
+    ' If video: include the opening line they should say on camera.',
+    ' If photo: describe the exact shot — subject, location, angle, what should be visible.',
+    ' Be specific enough that someone with no marketing experience knows exactly what to capture.]\n',
+    'CAPTION: [Full ready-to-post caption.',
+    ' Write in the brand voice from the brand guidelines.',
+    ' Include the hook in the first line — it must stop the scroll.',
+    ' 3-5 sentences max for Facebook. 1-3 sentences for Instagram.',
+    ' End with a soft CTA appropriate to the post type.]\n',
+    'HASHTAGS: [5-8 relevant hashtags — mix of local, industry, and topic-specific]\n',
+    'BEST TIME: [Day and time to post for maximum reach on this platform]\n\n',
+    '---\n\n',
+    'Day 1: Introduce the business and the person behind it.',
+    ' Build immediate recognition and humanity.\n',
+    'Day 2: Lead with the single biggest operational differentiator.',
+    ' Make the competitor weakness obvious without naming them.\n',
+    'Day 3: Address the number 1 family fear directly.',
+    ' Show how this home specifically eliminates that fear.\n',
+    'Day 4: Community proof.',
+    ' Use their community involvement or a local tie to build belonging.\n',
+    'Day 5: Education post.',
+    ' Teach families something they did not know — related to their undersold service or differentiator.\n',
+    'Day 6: Social proof.',
+    ' A real client story, testimonial angle, or review highlight.',
+    ' If no specific story provided, write a realistic composite scenario and note it needs a real story inserted.\n',
+    'Day 7: Pre-need awareness.',
+    ' Plant the seed for pre-need planning without being morbid.',
+    ' Speak directly to the pre-planner persona trigger.',
+  ].join('');
+  generatedOutput.week1 = await callClaude(SYSTEM, w1prompt);
+}
+
+function showOutput() {
+  document.getElementById('screen-gen').classList.remove('active');
+  document.getElementById('screen-out').classList.add('active');
+  document.getElementById('topbar-right').textContent = answers.q1_1 || 'Complete';
+
+  renderGoals();
+  renderCompetitors();
+  renderBrand();
+  renderPersonas();
+  renderScripts();
+  renderPreneed();
+  renderRoadmap();
+  renderWeek1();
+  clearSavedAnswers();
+}
+
+function renderGoals() {
+  document.getElementById('panel-goals').innerHTML = formatOutputSection(generatedOutput.goals, 'goals');
+}
+
+function renderCompetitors() {
+  document.getElementById('panel-competitors').innerHTML = formatOutputSection(generatedOutput.competitors, 'competitors');
+}
+
+function renderScripts() {
+  document.getElementById('panel-scripts').innerHTML = formatScripts(generatedOutput.scripts);
+}
+
+function renderPreneed() {
+  document.getElementById('panel-preneed').innerHTML = formatOutputSection(generatedOutput.preneed, 'preneed');
+}
+
+function renderWeek1() {
+  const roadmapPanel = document.getElementById('panel-roadmap');
+  const w1div = document.createElement('div');
+  w1div.innerHTML = '<div style="margin-top:40px;padding-top:32px;border-top:1px solid var(--border);">'
+    + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">WEEK 1 — DONE FOR YOU CONTENT</div>'
+    + formatWeek1(generatedOutput.week1)
+    + '</div>';
+  roadmapPanel.appendChild(w1div);
+}
+
+function renderBrand() {
+  const panel = document.getElementById('panel-brand');
+  panel.innerHTML = formatOutputSection(generatedOutput.brand, 'brand');
+}
+
+function renderPersonas() {
+  const panel = document.getElementById('panel-personas');
+  panel.innerHTML = formatOutputSection(generatedOutput.personas, 'personas');
+}
+
+function renderRoadmap() {
+  const panel = document.getElementById('panel-roadmap');
+  panel.innerHTML = formatWeeklyRoadmap(generatedOutput.roadmap);
+}
+
+function formatOutputSection(text, type) {
+  if (!text) return '<p style="color:var(--muted)">No content generated.</p>';
+
+  // Split on ALL CAPS section headers (lines that are all caps with optional colons/numbers)
+  const sections = text.split(/\n(?=[A-Z][A-Z\s&\/\-0-9:]{3,}$)/m);
+  let html = '';
+
+  sections.forEach(block => {
+    const lines = block.trim().split('\n');
+    const header = lines[0].trim();
+    const isHeader = /^[A-Z][A-Z\s&\/\-0-9:]{3,}$/.test(header);
+
+    if (isHeader && lines.length > 1) {
+      html += `<div class="out-section">
+        <div class="out-section-label">${header}</div>
+        <div class="out-content">${escHtml(lines.slice(1).join('\n').trim())}</div>
+      </div>`;
+    } else {
+      html += `<div class="out-section"><div class="out-content">${escHtml(block.trim())}</div></div>`;
+    }
+  });
+
+  return html;
+}
+
+function formatWeeklyRoadmap(text) {
+  if (!text) return '<p style="color:var(--muted)">No content generated.</p>';
+
+  // Split off the weekly section
+  const weekSplit = text.split(/\nWEEKLY THEMES/i);
+  let preWeek = weekSplit[0];
+  let weekSection = weekSplit[1] || '';
+
+  let html = formatOutputSection(preWeek, 'roadmap');
+
+  if (weekSection) {
+    html += '<div class="out-section"><div class="out-section-label">WEEKLY THEMES — 13 WEEKS</div>';
+    // Parse individual weeks
+    const weeks = weekSection.split(/\nWEEK\s+(\d+)/i).filter(s => s.trim());
+    let i = 0;
+    while (i < weeks.length) {
+      const num = weeks[i]?.match(/^\d+$/) ? weeks[i] : null;
+      const content = num ? weeks[i+1] : weeks[i];
+      if (content) {
+        const lines = content.trim().split('\n').filter(l => l.trim());
+        const titleLine = lines[0] || '';
+        const rest = lines.slice(1).join('\n');
+        html += `<div class="out-week">
+          <div class="out-week-num">${num || '?'}</div>
+          <div class="out-week-body">
+            <div class="out-week-theme">${escHtml(titleLine.replace(/^[:—\s]+/,''))}</div>
+            <div class="out-week-posts">${escHtml(rest)}</div>
+          </div>
+        </div>`;
+      }
+      i += num ? 2 : 1;
+    }
+    html += '</div>';
+    // Add rest after weeks
+    const afterWeeks = text.split(/\nREVIEW GENERATION/i);
+    if (afterWeeks[1]) {
+      html += formatOutputSection('REVIEW GENERATION' + afterWeeks[1], 'roadmap');
+    }
+  }
+
+  return html;
+}
+
+function formatWeek1(text) {
+  if (!text) return '<p style="color:var(--muted)">No content generated.</p>';
+  const days = text.split(/\n(?=DAY\s+\d+\s*[—-])/i);
+  let html = '<div style="margin-bottom:24px;padding:16px 20px;background:var(--green-sub);border-left:3px solid var(--green);border-radius:3px;">'
+           + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;margin-bottom:4px;">WEEK 1 — 7 POSTS READY TO PUBLISH</div>'
+           + '<div style="font-size:13px;color:var(--muted);">1 post per day · Facebook · All captions written · All visuals directed</div>'
+           + '</div>';
+  let currentDay = null;
+  days.forEach(block => {
+    const lines = block.trim().split('\n');
+    const header = lines[0].trim();
+    if (/^DAY\s+\d+/i.test(header)) {
+      const dayMatch = header.match(/DAY\s+(\d+)/i);
+      const dayNum = dayMatch ? dayMatch[1] : '?';
+      const platform = header.replace(/DAY\s+\d+\s*[—-]\s*/i, '').trim();
+      const isFacebook = /facebook/i.test(platform);
+      const borderColor = isFacebook ? '#1877F2' : '#E4405F';
+      const platformLabel = isFacebook ? 'FACEBOOK' : 'INSTAGRAM';
+      if (dayNum !== currentDay) {
+        if (currentDay !== null) html += '</div>';
+        html += '<div style="margin-bottom:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:28px;padding-bottom:6px;border-bottom:1px solid var(--border);">DAY ' + dayNum + '</div>';
+        html += '<div>';
+        currentDay = dayNum;
+      }
+      let cardHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ' + borderColor + ';border-radius:4px;padding:16px;overflow:hidden;">';
+      cardHtml += '<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:' + borderColor + ';margin-bottom:12px;">' + platformLabel + '</div>';
+      const fields = ['POST TYPE','VISUAL DIRECTION','CAPTION','HASHTAGS','BEST TIME'];
+      let remaining = lines.slice(1).join('\n');
+      fields.forEach(field => {
+        const regex = new RegExp(field + ':\\s*([\\s\\S]*?)(?=' + fields.filter(f=>f!==field).map(f=>f+':').join('|') + '|$)');
+        const match = remaining.match(regex);
+        if (match) {
+          const val = match[1].trim();
+          const isCaption = field === 'CAPTION';
+          const isVisual = field === 'VISUAL DIRECTION';
+          cardHtml += '<div style="margin-bottom:10px;">';
+          cardHtml += '<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">' + field + '</div>';
+          if (isCaption) {
+            cardHtml += '<div style="font-size:13px;color:var(--text);line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:3px;">' + escHtml(val) + '</div>';
+          } else if (isVisual) {
+            cardHtml += '<div style="font-size:12px;color:var(--green);line-height:1.6;font-style:italic;">' + escHtml(val) + '</div>';
+          } else {
+            cardHtml += '<div style="font-size:12px;color:var(--muted);line-height:1.5;">' + escHtml(val) + '</div>';
+          }
+          cardHtml += '</div>';
+        }
+      });
+      cardHtml += '</div>';
+      html += cardHtml;
+    }
+  });
+  if (currentDay !== null) html += '</div>';
+  return html;
+}
+
+function formatScripts(text) {
+  if (!text) return '<p style="color:var(--muted)">No scripts generated.</p>';
+  // Split on SCRIPT N: headers
+  const blocks = text.split(/\n(?=SCRIPT\s+\d+:)/i);
+  let html = '';
+  blocks.forEach(block => {
+    const lines = block.trim().split('\n');
+    const titleLine = lines[0];
+    if (/^SCRIPT\s+\d+:/i.test(titleLine)) {
+      const sections = block.split(/\n(?=(PLATFORM|RUNTIME|PERSONA TARGET|HOOK|PROBLEM|CREDIBILITY|PROOF|CTA|DIRECTOR NOTES)\s*[:(])/);
+      let cardHtml = '<div class="out-card" style="margin-bottom:20px;">';
+      cardHtml += '<div class="out-card-title" style="color:var(--green);font-size:22px;margin-bottom:16px;">' + escHtml(titleLine) + '</div>';
+      sections.slice(1).forEach(sec => {
+        const secLines = sec.trim().split('\n');
+        const secHeader = secLines[0].replace(/:.*/, '').trim();
+        const secBody = secLines.join('\n').trim();
+        const isCTA = /^(HOOK|PROBLEM|CREDIBILITY|PROOF|CTA)/i.test(secHeader);
+        cardHtml += '<div style="margin-bottom:12px;">';
+        cardHtml += '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">' + escHtml(secHeader) + '</div>';
+        if (isCTA) {
+          cardHtml += '<div style="background:var(--surface2);border-left:3px solid var(--green);padding:12px 14px;font-size:14px;color:var(--text);line-height:1.7;font-style:italic;">' + escHtml(secBody.replace(/^[^:]+:\s*/,'')) + '</div>';
+        } else {
+          cardHtml += '<div style="font-size:13px;color:var(--muted);line-height:1.6;">' + escHtml(secBody.replace(/^[^:]+:\s*/,'')) + '</div>';
+        }
+        cardHtml += '</div>';
+      });
+      cardHtml += '</div>';
+      html += cardHtml;
+    } else if (block.trim()) {
+      html += '<div class="out-section"><div class="out-content">' + escHtml(block.trim()) + '</div></div>';
+    }
+  });
+  return html || '<div class="out-content">' + escHtml(text) + '</div>';
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.out-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.out-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── PDF DOWNLOAD ─────────────────────────────────────────────────────────────
+function downloadPDF() {
+  // Show all panels before printing
+  document.querySelectorAll('.out-panel').forEach(p => p.style.display = 'block');
+  window.print();
+  // Restore tab state after print dialog closes
+  setTimeout(() => {
+    document.querySelectorAll('.out-panel').forEach(p => p.style.display = '');
+    document.querySelector('.out-panel.active') || document.getElementById('panel-brand').classList.add('active');
+  }, 1000);
+}
+
+// ── UTILITIES ────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  if (!s) return '';
+  return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
