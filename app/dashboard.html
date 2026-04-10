@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0A0A0A">
+<title>DISRUPT — 90-Day Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:     #0A0A0A;
+  --dark:      #111111;
+  --surface:   #181818;
+  --surface2:  #1F1F1F;
+  --surface3:  #252525;
+  --border:    #2A2A2A;
+  --border2:   #333333;
+  --white:     #FFFFFF;
+  --text:      #F0F0F0;
+  --muted:     #888888;
+  --faint:     #4A4A4A;
+  --green:     #7DC422;
+  --green-dim: #5A9016;
+  --green-sub: rgba(125,196,34,0.10);
+  --red:       #E74C3C;
+  --amber:     #F39C12;
+  --blue:      #3498DB;
+  --font-d:    'Bebas Neue', 'Arial Black', sans-serif;
+  --font-b:    'DM Sans', 'Helvetica Neue', sans-serif;
+  --font-m:    'DM Mono', 'Courier New', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--black);color:var(--text);font-family:var(--font-b);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--dark)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── SCREENS ── */
+.screen{display:none}.screen.active{display:block}
+
+/* ── AUTH ── */
+.auth-wrap{max-width:480px;margin:0 auto;padding:80px 24px}
+.auth-logo{font-family:var(--font-d);font-size:32px;color:var(--white);margin-bottom:4px}
+.auth-logo span{color:var(--green)}
+.auth-eyebrow{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:40px}
+.auth-title{font-family:var(--font-d);font-size:44px;color:var(--white);line-height:1.05;margin-bottom:12px}
+.auth-sub{font-size:14px;color:var(--muted);margin-bottom:40px}
+.auth-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:32px}
+.auth-tab{font-family:var(--font-m);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:0 20px;height:40px;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all 0.2s}
+.auth-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.field{margin-bottom:20px}
+.field label{display:block;font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.field input{width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--font-b);font-size:15px;border-radius:3px;outline:none;transition:border-color 0.2s}
+.field input:focus{border-color:var(--green)}
+.btn-primary{width:100%;padding:14px;background:var(--green);color:var(--black);font-family:var(--font-m);font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:3px;cursor:pointer;transition:background 0.2s;margin-top:8px}
+.btn-primary:hover{background:#8ED428}
+.auth-error{font-family:var(--font-m);font-size:11px;color:var(--red);letter-spacing:1px;margin-top:8px;display:none}
+.auth-error.show{display:block}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--dark);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--font-d);font-size:24px;color:var(--white);letter-spacing:1px}
+.brand span{color:var(--green)}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.client-name{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.btn-logout{font-family:var(--font-m);font-size:10px;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;background:none;border:none;cursor:pointer;transition:color 0.2s}
+.btn-logout:hover{color:var(--text)}
+
+/* ── DASHBOARD LAYOUT ── */
+.dash-wrap{max-width:1000px;margin:0 auto;padding:32px 24px 80px}
+
+/* ── HERO ── */
+.dash-hero{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+.dash-biz{font-family:var(--font-d);font-size:48px;color:var(--white);line-height:1.05;margin-bottom:4px}
+.dash-market{font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.day-counter{text-align:right}
+.day-big{font-family:var(--font-d);font-size:64px;color:var(--green);line-height:1}
+.day-label{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.progress-track{height:3px;background:var(--border2);border-radius:2px;margin-top:8px;width:120px;margin-left:auto}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width 0.5s ease}
+
+/* ── SCORECARD ── */
+.scorecard{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:32px}
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px}
+.score-label{font-family:var(--font-m);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.score-val{font-family:var(--font-d);font-size:28px;color:var(--white);line-height:1}
+.score-target{font-family:var(--font-m);font-size:10px;color:var(--green);margin-top:2px}
+.score-input{width:100%;background:transparent;border:none;color:var(--white);font-family:var(--font-d);font-size:28px;outline:none;padding:0}
+.score-input::placeholder{color:var(--faint)}
+
+/* ── SECTION LABEL ── */
+.sec-label{font-family:var(--font-m);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ── WEEK ACCORDION ── */
+.week-list{display:flex;flex-direction:column;gap:8px;margin-bottom:40px}
+.week-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:border-color 0.3s}
+.week-card.current{border-color:var(--green)}
+.week-card.complete{border-color:var(--green-dim)}
+.week-header{display:flex;align-items:stretch;cursor:pointer;user-select:none}
+.week-header:hover .week-title{color:var(--green)}
+.week-num{width:52px;min-width:52px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:28px;color:var(--faint);background:var(--dark);border-right:1px solid var(--border);padding:14px 0;transition:color 0.3s}
+.week-card.current .week-num{color:var(--green)}
+.week-card.complete .week-num{color:var(--green-dim)}
+.week-meta{flex:1;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.week-title{font-family:var(--font-d);font-size:19px;color:var(--white);transition:color 0.2s}
+.week-focus{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:1px}
+.week-status{display:flex;align-items:center;padding:0 14px;gap:6px}
+.week-badge{font-family:var(--font-m);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:2px}
+.badge-current{background:var(--green);color:var(--black)}
+.badge-complete{background:var(--green-sub);color:var(--green)}
+.badge-upcoming{background:var(--surface3);color:var(--muted)}
+.week-toggle{padding:0 14px;color:var(--faint);font-size:11px;transition:transform 0.25s,color 0.2s;display:flex;align-items:center}
+.week-header.open .week-toggle{transform:rotate(180deg);color:var(--green)}
+
+/* week body */
+.week-body{overflow:hidden;max-height:0;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1);border-top:0 solid var(--border)}
+.week-body.open{max-height:1200px;border-top-width:1px}
+.week-inner{padding:16px}
+
+/* tasks */
+.task-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.task-row{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:12px 14px}
+.task-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:0}
+.task-status-btn{flex-shrink:0;margin-top:1px;width:20px;height:20px;border-radius:2px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.task-status-btn.in-progress{border-color:var(--amber);background:rgba(243,156,18,0.15)}
+.task-status-btn.done{border-color:var(--green);background:var(--green)}
+.task-check{display:none;color:var(--black);font-size:11px;font-weight:700}
+.task-status-btn.done .task-check{display:block}
+.task-amber{display:none;width:8px;height:8px;border-radius:50%;background:var(--amber)}
+.task-status-btn.in-progress .task-amber{display:block}
+.task-text{font-size:14px;color:var(--text);line-height:1.5;flex:1}
+.task-row.done-row .task-text{color:var(--muted);text-decoration:line-through}
+.task-expand{margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--faint);font-size:11px;cursor:pointer;padding:0 0 0 8px;transition:color 0.2s}
+.task-expand:hover{color:var(--green)}
+.task-notes{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.task-notes.open{display:block}
+.task-notes textarea{width:100%;background:var(--dark);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:13px;padding:10px 12px;border-radius:3px;resize:vertical;min-height:72px;outline:none;transition:border-color 0.2s}
+.task-notes textarea:focus{border-color:var(--green)}
+.task-notes textarea::placeholder{color:var(--faint)}
+.task-status-row{display:flex;gap:6px;margin-top:8px}
+.status-pill{font-family:var(--font-m);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:5px 10px;border-radius:2px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s}
+.status-pill.active-not{border-color:var(--faint);color:var(--text)}
+.status-pill.active-progress{border-color:var(--amber);color:var(--amber);background:rgba(243,156,18,0.1)}
+.status-pill.active-done{border-color:var(--green);color:var(--green);background:var(--green-sub)}
+
+/* wins */
+.wins-section{margin-bottom:16px}
+.wins-label{font-family:var(--font-m);font-size:9px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.wins-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.win-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--green-sub);border:1px solid var(--green-dim);border-radius:3px}
+.win-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+.win-text{font-size:13px;color:var(--text);flex:1}
+.win-del{background:none;border:none;color:var(--faint);font-size:14px;cursor:pointer;padding:0;transition:color 0.2s}
+.win-del:hover{color:var(--red)}
+.win-add{display:flex;gap:8px}
+.win-add input{flex:1;padding:8px 12px;background:var(--dark);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:13px;border-radius:3px;outline:none;transition:border-color 0.2s}
+.win-add input:focus{border-color:var(--green)}
+.win-add button{padding:8px 16px;background:transparent;border:1px solid var(--green);color:var(--green);font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;border-radius:3px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.win-add button:hover{background:var(--green);color:var(--black)}
+
+/* disrupt notes */
+.disrupt-notes{background:var(--dark);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:0 3px 3px 0;padding:12px 14px;margin-top:8px}
+.disrupt-notes-label{font-family:var(--font-m);font-size:9px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.disrupt-notes textarea{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-b);font-size:13px;resize:vertical;min-height:56px;outline:none}
+.disrupt-notes textarea::placeholder{color:var(--faint)}
+
+/* ── METRICS ── */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:40px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px}
+.metric-label{font-family:var(--font-m);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.metric-months{display:flex;gap:8px}
+.metric-month{flex:1;text-align:center}
+.metric-month-label{font-family:var(--font-m);font-size:9px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.metric-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-d);font-size:22px;text-align:center;padding:6px 4px;border-radius:3px;outline:none;transition:border-color 0.2s;-moz-appearance:textfield}
+.metric-input::-webkit-outer-spin-button,.metric-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.metric-input:focus{border-color:var(--green)}
+.metric-target{font-family:var(--font-m);font-size:9px;color:var(--green-dim);text-align:center;margin-top:4px}
+
+/* ── SAVE BAR ── */
+.save-bar{position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-top:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100}
+.save-status{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.save-status.saved{color:var(--green)}
+.btn-save{padding:10px 28px;background:var(--green);color:var(--black);font-family:var(--font-m);font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:3px;cursor:pointer;transition:background 0.2s}
+.btn-save:hover{background:#8ED428}
+
+/* ── ADMIN ── */
+.admin-wrap{max-width:800px;margin:0 auto;padding:32px 24px 80px}
+.admin-title{font-family:var(--font-d);font-size:40px;color:var(--white);margin-bottom:4px}
+.admin-sub{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:32px}
+.client-list{display:flex;flex-direction:column;gap:8px;margin-bottom:32px}
+.client-row{display:flex;align-items:center;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:border-color 0.2s}
+.client-row:hover{border-color:var(--green)}
+.client-day{width:60px;min-width:60px;font-family:var(--font-d);font-size:28px;color:var(--green);text-align:center;padding:16px 0;background:var(--dark);border-right:1px solid var(--border)}
+.client-info{flex:1;padding:14px 16px}
+.client-biz{font-family:var(--font-d);font-size:20px;color:var(--white);margin-bottom:2px}
+.client-email{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:1px}
+.client-prog{padding:0 16px;text-align:right}
+.client-prog-num{font-family:var(--font-d);font-size:22px;color:var(--green)}
+.client-prog-label{font-family:var(--font-m);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.create-form{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px}
+.create-title{font-family:var(--font-m);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.create-form textarea{width:100%;background:var(--dark);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:13px;padding:10px 12px;border-radius:3px;resize:vertical;min-height:120px;outline:none;margin-bottom:12px;transition:border-color 0.2s}
+.create-form textarea:focus{border-color:var(--green)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .dash-hero{grid-template-columns:1fr;gap:16px}
+  .day-counter{text-align:left}
+  .progress-track{margin-left:0}
+  .scorecard{grid-template-columns:1fr 1fr}
+  .form-grid{grid-template-columns:1fr}
+  .topbar{padding:0 16px}
+  .dash-wrap,.admin-wrap{padding:20px 16px 80px}
+}
+</style>
+</head>
+<body>
+
+<!-- SCREEN: LOGIN -->
+<div class="screen active" id="screen-login">
+  <div class="auth-wrap">
+    <div class="auth-logo">DISRUPT<span>.</span></div>
+    <div class="auth-eyebrow">90-Day Dashboard</div>
+    <h1 class="auth-title">Your growth system is waiting.</h1>
+    <p class="auth-sub">Sign in to track your 90-day execution plan.</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('client',this)">Client login</button>
+      <button class="auth-tab" onclick="switchAuthTab('admin',this)">DISRUPT admin</button>
+    </div>
+    <div id="auth-client">
+      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com"></div>
+      <div class="field"><label>PIN (4 digits)</label><input type="password" id="login-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <div class="auth-error" id="login-error">Email or PIN not found.</div>
+      <button class="btn-primary" onclick="handleLogin()">SIGN IN →</button>
+      <div style="margin-top:16px;text-align:center">
+        <button onclick="switchAuthTab('signup',document.querySelector('.auth-tab'))" style="background:none;border:none;color:var(--muted);font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer">First time? Create account →</button>
+      </div>
+    </div>
+    <div id="auth-signup" style="display:none">
+      <div class="field"><label>First name</label><input type="text" id="signup-first" placeholder="First name"></div>
+      <div class="field"><label>Last name</label><input type="text" id="signup-last" placeholder="Last name"></div>
+      <div class="field"><label>Business name</label><input type="text" id="signup-biz" placeholder="Your funeral home name"></div>
+      <div class="field"><label>Market</label><input type="text" id="signup-market" placeholder="City, State"></div>
+      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="your@email.com"></div>
+      <div class="field"><label>Create a 4-digit PIN</label><input type="password" id="signup-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <div class="field"><label>Start date (when your 90 days began)</label><input type="date" id="signup-date"></div>
+      <div class="auth-error" id="signup-error">Please fill in all fields.</div>
+      <button class="btn-primary" onclick="handleSignup()">CREATE DASHBOARD →</button>
+    </div>
+    <div id="auth-admin" style="display:none">
+      <div class="field"><label>Admin PIN</label><input type="password" id="admin-pin" placeholder="••••" maxlength="4"></div>
+      <div class="auth-error" id="admin-error">Incorrect admin PIN.</div>
+      <button class="btn-primary" onclick="handleAdminLogin()">ACCESS ADMIN →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: DASHBOARD -->
+<div class="screen" id="screen-dash">
+  <div class="topbar">
+    <div class="brand">DISRUPT<span>.</span></div>
+    <div class="topbar-right">
+      <span class="client-name" id="topbar-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">SIGN OUT</button>
+    </div>
+  </div>
+  <div class="dash-wrap">
+    <div class="dash-hero">
+      <div>
+        <div class="dash-biz" id="dash-biz"></div>
+        <div class="dash-market" id="dash-market"></div>
+      </div>
+      <div class="day-counter">
+        <div class="day-big" id="day-num">—</div>
+        <div class="day-label">of 90 days</div>
+        <div class="progress-track"><div class="progress-fill" id="day-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- SCORECARD -->
+    <div class="sec-label">90-DAY SCORECARD</div>
+    <div class="scorecard" id="scorecard"></div>
+
+    <!-- WEEKS -->
+    <div class="sec-label">13-WEEK EXECUTION PLAN</div>
+    <div class="week-list" id="week-list"></div>
+
+    <!-- METRICS -->
+    <div class="sec-label">MONTHLY METRICS</div>
+    <div class="metrics-grid" id="metrics-grid"></div>
+  </div>
+  <div class="save-bar">
+    <span class="save-status" id="save-status">Unsaved changes</span>
+    <button class="btn-save" onclick="saveData()">SAVE PROGRESS</button>
+  </div>
+</div>
+
+<!-- SCREEN: ADMIN -->
+<div class="screen" id="screen-admin">
+  <div class="topbar">
+    <div class="brand">DISRUPT<span>.</span></div>
+    <div class="topbar-right">
+      <span class="client-name">ADMIN</span>
+      <button class="btn-logout" onclick="handleLogout()">SIGN OUT</button>
+    </div>
+  </div>
+  <div class="admin-wrap">
+    <div class="admin-title">Client Dashboards</div>
+    <div class="admin-sub">All active clients · Click to view · Changes save to their account</div>
+    <div class="client-list" id="client-list"></div>
+    <div class="create-form">
+      <div class="create-title">CREATE NEW CLIENT DASHBOARD</div>
+      <div class="form-grid">
+        <div class="field" style="margin:0"><label>First name</label><input type="text" id="new-first" placeholder="First name"></div>
+        <div class="field" style="margin:0"><label>Last name</label><input type="text" id="new-last" placeholder="Last name"></div>
+        <div class="field" style="margin:0"><label>Business name</label><input type="text" id="new-biz" placeholder="Funeral home name"></div>
+        <div class="field" style="margin:0"><label>Market</label><input type="text" id="new-market" placeholder="City, State"></div>
+        <div class="field" style="margin:0"><label>Client email</label><input type="email" id="new-email" placeholder="client@email.com"></div>
+        <div class="field" style="margin:0"><label>Client PIN</label><input type="password" id="new-pin" placeholder="4 digits" maxlength="4"></div>
+        <div class="field" style="margin:0"><label>Start date</label><input type="date" id="new-date"></div>
+        <div class="field" style="margin:0"><label>90-day case target</label><input type="number" id="new-target" placeholder="e.g. 40"></div>
+      </div>
+      <label style="font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:8px">Paste 90-day roadmap (from onboarding output)</label>
+      <textarea id="new-roadmap" placeholder="Paste the full 90-day roadmap text here — the system will parse it into weekly tasks automatically..."></textarea>
+      <button class="btn-primary" onclick="createClientDash()">CREATE DASHBOARD →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const ADMIN_PIN = '1234'; // Change this to your admin PIN
+
+// ── DEFAULT WEEK THEMES ───────────────────────────────────────────────────────
+const DEFAULT_WEEKS = [
+  {title:'Introduce the Brand',focus:'Who you are and why you exist',tasks:['Facebook video: Owner introduces themselves and the business — authentic, unhurried, no script','Instagram post: Photo of the team with caption about years of combined experience and community roots','Google Business post: Introduction to the team with a clear call to action to call or visit']},
+  {title:'Lead With Your Differentiator',focus:'Make your #1 advantage impossible to ignore',tasks:['Facebook video: Walk through your single biggest operational advantage — show it, don\'t just say it','Instagram carousel: 3-slide breakdown of why your differentiator matters to families','Google Business post: State your differentiator as a fact, not a claim. One sentence. Link to contact.']},
+  {title:'Address the Fear',focus:'Name the #1 thing families are afraid of — then eliminate it',tasks:['Facebook video: Speak directly to the most common family fear. Address it head-on. No fluff.','Instagram post: Graphic with a myth vs. reality format — one common misconception corrected','Google Business post: Short educational post on how your process protects families from the fear they have']},
+  {title:'Community Proof',focus:'Show you belong to this community — not just operate in it',tasks:['Facebook video: Feature a community event, sponsorship, or local connection. Let the community speak.','Instagram post: Photo from community involvement with caption about your local roots','Google Business post: Community spotlight — tag local organizations, use local hashtags']},
+  {title:'The Education Play',focus:'Teach families something they didn\'t know',tasks:['Facebook video: Educational content on an underserved topic — pre-planning, process, pricing transparency','Instagram carousel: 5 things families wish they knew before calling a funeral home','Google Business post: FAQ-style post answering the most common question you get before families call']},
+  {title:'Social Proof',focus:'Let your past families sell you',tasks:['Facebook video: Read a real review or share a real story (with permission) — specific, emotional, honest','Instagram graphic: Pull quote from a review with your branding — make it shareable','Google Business post: Featured review with a thank-you and a link to leave more reviews']},
+  {title:'Pre-Need Awareness',focus:'Plant the seed for pre-planning without being morbid',tasks:['Facebook video: "3 reasons people pre-plan that have nothing to do with dying" — reframe the conversation','Instagram post: Peaceful, forward-looking image with caption about the gift of pre-planning for your family','Google Business post: Soft CTA for pre-need consultation — no pressure, just information']},
+  {title:'Behind the Scenes',focus:'Show the machine — build trust through transparency',tasks:['Facebook video: A behind-the-scenes look at your facility, process, or a day in the life','Instagram stories series: Real-time moments from your team\'s day (appropriate moments only)','Google Business post: "What happens when you call us" — demystify the first call']},
+  {title:'Staff Story',focus:'Make your team recognizable in the community',tasks:['Facebook video: Feature a specific team member — their story, their why, their connection to the community','Instagram post: Staff spotlight with personal detail that builds human connection','Google Business post: Team member feature with their specific role and what families can expect from them']},
+  {title:'Price Transparency',focus:'Break the biggest barrier to pre-need conversion',tasks:['Facebook video: "Let\'s talk about the question everyone has but nobody asks" — pricing transparency','Instagram carousel: 3 pricing myths debunked — specific to your market and your position','Google Business post: Direct statement on how your pricing works — no surprises, no hidden fees']},
+  {title:'Personalization Story',focus:'Prove that every service is unique to the family',tasks:['Facebook video: Tell a specific personalization story — the more unusual, the better. Show the proof.','Instagram Reel: Fast-cut montage of personalized service details your team has delivered','Google Business post: "Your service should look like your life" — one personalization example']},
+  {title:'Review Push',focus:'Convert your goodwill into Google reviews at scale',tasks:['Facebook post: Direct ask for reviews with a link — frame it as helping other families in your community','Instagram story: Poll asking followers if they\'ve worked with you — follow up with review ask','Google Business post: Review milestone celebration + renewed ask. Thank the community for their trust.']},
+  {title:'Month 3 Momentum',focus:'Capitalize on 90 days of visibility and trust',tasks:['Facebook video: Reflect on the last 90 days — what\'s changed, what families are saying, what\'s coming','Instagram post: By-the-numbers update — growth in reviews, reach, or community engagement','Google Business post: Forward-looking statement about the next season. Invite pre-need consultations.']},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let currentUser = null;
+let userData = null;
+let unsaved = false;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function switchAuthTab(tab, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('auth-client').style.display = 'none';
+  document.getElementById('auth-signup').style.display = 'none';
+  document.getElementById('auth-admin').style.display = 'none';
+  if (tab === 'client') document.getElementById('auth-client').style.display = 'block';
+  else if (tab === 'signup') document.getElementById('auth-signup').style.display = 'block';
+  else if (tab === 'admin') document.getElementById('auth-admin').style.display = 'block';
+}
+
+function handleLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pin = document.getElementById('login-pin').value.trim();
+  const key = 'disrupt_client_' + btoa(email);
+  const saved = localStorage.getItem(key);
+  const err = document.getElementById('login-error');
+  if (!saved) { err.classList.add('show'); return; }
+  const data = JSON.parse(saved);
+  if (data.pin !== pin) { err.classList.add('show'); return; }
+  err.classList.remove('show');
+  currentUser = email;
+  userData = data;
+  showDashboard();
+}
+
+function handleSignup() {
+  const first = document.getElementById('signup-first').value.trim();
+  const last  = document.getElementById('signup-last').value.trim();
+  const biz   = document.getElementById('signup-biz').value.trim();
+  const mkt   = document.getElementById('signup-market').value.trim();
+  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const pin   = document.getElementById('signup-pin').value.trim();
+  const date  = document.getElementById('signup-date').value;
+  const err   = document.getElementById('signup-error');
+  if (!first || !last || !biz || !email || !pin || !date) { err.classList.add('show'); return; }
+  if (pin.length !== 4) { err.textContent = 'PIN must be exactly 4 digits.'; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  const data = {
+    pin, firstName: first, lastName: last, biz, market: mkt, email, startDate: date,
+    weeks: buildDefaultWeeks(),
+    metrics: { cases:[0,0,0], reviews:[0,0,0], reach:[0,0,0] },
+    targets: { cases: 0 },
+    scores: { cases: '', reviews: '', reach: '' },
+  };
+  const key = 'disrupt_client_' + btoa(email);
+  localStorage.setItem(key, JSON.stringify(data));
+  addToClientIndex(email, biz);
+  currentUser = email;
+  userData = data;
+  showDashboard();
+}
+
+function handleAdminLogin() {
+  const pin = document.getElementById('admin-pin').value.trim();
+  const err = document.getElementById('admin-error');
+  if (pin !== ADMIN_PIN) { err.classList.add('show'); return; }
+  err.classList.remove('show');
+  currentUser = '__admin__';
+  showAdmin();
+}
+
+function handleLogout() {
+  if (unsaved && currentUser !== '__admin__') {
+    if (!confirm('You have unsaved changes. Leave without saving?')) return;
+  }
+  currentUser = null;
+  userData = null;
+  unsaved = false;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-login').classList.add('active');
+}
+
+function addToClientIndex(email, biz) {
+  const idx = JSON.parse(localStorage.getItem('disrupt_client_index') || '[]');
+  if (!idx.find(c => c.email === email)) idx.push({ email, biz });
+  localStorage.setItem('disrupt_client_index', JSON.stringify(idx));
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+function showAdmin() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-admin').classList.add('active');
+  renderClientList();
+}
+
+function renderClientList() {
+  const idx = JSON.parse(localStorage.getItem('disrupt_client_index') || '[]');
+  const el = document.getElementById('client-list');
+  if (!idx.length) { el.innerHTML = '<div style="font-family:var(--font-m);font-size:11px;color:var(--muted);padding:16px;">No clients yet. Create one below.</div>'; return; }
+  el.innerHTML = '';
+  idx.forEach(c => {
+    const key = 'disrupt_client_' + btoa(c.email);
+    const d = JSON.parse(localStorage.getItem(key) || '{}');
+    const dayNum = d.startDate ? Math.min(Math.floor((Date.now() - new Date(d.startDate)) / 86400000) + 1, 90) : 0;
+    const progress = d.weeks ? Math.round((d.weeks.flat().filter(w => w && w.tasks && w.tasks.every && w.tasks.every(t => t.status === 'done')).length / 13) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'client-row';
+    row.innerHTML = `<div class="client-day">${dayNum}</div><div class="client-info"><div class="client-biz">${c.biz}</div><div class="client-email">${c.email}</div></div><div class="client-prog"><div class="client-prog-num">${progress}%</div><div class="client-prog-label">Complete</div></div>`;
+    row.onclick = () => { currentUser = c.email; userData = d; showDashboard(); };
+    el.appendChild(row);
+  });
+}
+
+function createClientDash() {
+  const first  = document.getElementById('new-first').value.trim();
+  const last   = document.getElementById('new-last').value.trim();
+  const biz    = document.getElementById('new-biz').value.trim();
+  const mkt    = document.getElementById('new-market').value.trim();
+  const email  = document.getElementById('new-email').value.trim().toLowerCase();
+  const pin    = document.getElementById('new-pin').value.trim();
+  const date   = document.getElementById('new-date').value;
+  const target = document.getElementById('new-target').value;
+  const roadmap = document.getElementById('new-roadmap').value.trim();
+  if (!biz || !email || !pin || !date) { alert('Please fill in all required fields.'); return; }
+  const weeks = roadmap ? parseRoadmapToWeeks(roadmap) : buildDefaultWeeks();
+  const data = {
+    pin, firstName: first, lastName: last, biz, market: mkt, email, startDate: date,
+    weeks,
+    metrics: { cases:[0,0,0], reviews:[0,0,0], reach:[0,0,0] },
+    targets: { cases: parseInt(target) || 0 },
+    scores: { cases: '', reviews: '', reach: '' },
+  };
+  localStorage.setItem('disrupt_client_' + btoa(email), JSON.stringify(data));
+  addToClientIndex(email, biz);
+  alert('Dashboard created for ' + biz + '. Client can log in with their email and PIN: ' + pin);
+  document.getElementById('new-biz').value = '';
+  document.getElementById('new-email').value = '';
+  document.getElementById('new-pin').value = '';
+  document.getElementById('new-roadmap').value = '';
+  renderClientList();
+}
+
+// ── ROADMAP PARSER ────────────────────────────────────────────────────────────
+function parseRoadmapToWeeks(text) {
+  const weeks = [];
+  const weekBlocks = text.split(/\n(?=WEEK\s+\d+)/i);
+  weekBlocks.forEach(block => {
+    const titleMatch = block.match(/WEEK\s+\d+:?\s*([^\n]+)/i);
+    const focusMatch = block.match(/Focus:\s*([^\n]+)/i);
+    const postMatches = [...block.matchAll(/Posts?:?\s*[-–]?\s*([^\n]+)/gi)];
+    if (titleMatch) {
+      const tasks = postMatches.slice(0, 3).map(m => m[1].trim()).filter(Boolean);
+      while (tasks.length < 3) tasks.push('Create content aligned with this week\'s theme');
+      weeks.push({
+        title: titleMatch[1].trim(),
+        focus: focusMatch ? focusMatch[1].trim() : 'Execute this week\'s content theme',
+        tasks: tasks.map(t => ({ text: t, status: 'not-started', notes: '', wins: [], disruptNote: '' })),
+        wins: [],
+        disruptNote: '',
+      });
+    }
+  });
+  while (weeks.length < 13) {
+    const def = DEFAULT_WEEKS[weeks.length] || DEFAULT_WEEKS[0];
+    weeks.push({
+      title: def.title, focus: def.focus,
+      tasks: def.tasks.map(t => ({ text: t, status: 'not-started', notes: '', wins: [] })),
+      wins: [], disruptNote: '',
+    });
+  }
+  return weeks.slice(0, 13);
+}
+
+function buildDefaultWeeks() {
+  return DEFAULT_WEEKS.map(w => ({
+    title: w.title, focus: w.focus,
+    tasks: w.tasks.map(t => ({ text: t, status: 'not-started', notes: '' })),
+    wins: [], disruptNote: '',
+  }));
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function showDashboard() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-dash').classList.add('active');
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const d = userData;
+  document.getElementById('dash-biz').textContent = d.biz || 'Your Business';
+  document.getElementById('dash-market').textContent = d.market || '';
+  document.getElementById('topbar-name').textContent = (d.firstName && d.lastName) ? d.firstName + ' ' + d.lastName : d.biz || '';
+
+  // Day counter
+  const dayNum = d.startDate ? Math.min(Math.floor((Date.now() - new Date(d.startDate)) / 86400000) + 1, 90) : 1;
+  document.getElementById('day-num').textContent = Math.max(dayNum, 1);
+  document.getElementById('day-fill').style.width = Math.min((dayNum / 90) * 100, 100) + '%';
+
+  // Scorecard
+  renderScorecard(d);
+
+  // Weeks
+  if (!d.weeks || !d.weeks.length) d.weeks = buildDefaultWeeks();
+  renderWeeks(d, dayNum);
+
+  // Metrics
+  renderMetrics(d);
+
+  setSaveStatus('saved');
+}
+
+function renderScorecard(d) {
+  const el = document.getElementById('scorecard');
+  const cards = [
+    { label: 'Cases this month', key: 'cases', target: d.targets?.cases ? 'Target: +' + Math.round(d.targets.cases / 3) + '/mo' : '' },
+    { label: 'Google reviews', key: 'reviews', target: 'Track monthly growth' },
+    { label: 'Facebook reach', key: 'reach', target: 'Track weekly reach' },
+  ];
+  el.innerHTML = '';
+  cards.forEach(card => {
+    const val = d.scores?.[card.key] || '';
+    const div = document.createElement('div');
+    div.className = 'score-card';
+    div.innerHTML = `<div class="score-label">${card.label}</div>
+      <input class="score-input" type="text" value="${val}" placeholder="—" oninput="updateScore('${card.key}', this.value)">
+      <div class="score-target">${card.target}</div>`;
+    el.appendChild(div);
+  });
+}
+
+function updateScore(key, val) {
+  if (!userData.scores) userData.scores = {};
+  userData.scores[key] = val;
+  markUnsaved();
+}
+
+function renderWeeks(d, dayNum) {
+  const el = document.getElementById('week-list');
+  el.innerHTML = '';
+  const currentWeek = Math.min(Math.ceil(dayNum / 7), 13);
+
+  d.weeks.forEach((week, wi) => {
+    const weekNum = wi + 1;
+    const isCurrent = weekNum === currentWeek;
+    const isComplete = week.tasks && week.tasks.every(t => t.status === 'done');
+    const isPast = weekNum < currentWeek;
+
+    const card = document.createElement('div');
+    card.className = 'week-card' + (isCurrent ? ' current' : '') + (isComplete ? ' complete' : '');
+    card.id = 'week-card-' + wi;
+
+    const badgeClass = isComplete ? 'badge-complete' : isCurrent ? 'badge-current' : 'badge-upcoming';
+    const badgeText = isComplete ? '✓ Complete' : isCurrent ? 'This week' : isPast ? 'Review' : 'Upcoming';
+
+    card.innerHTML = `<div class="week-header" id="wh-${wi}" onclick="toggleWeek(${wi})">
+      <div class="week-num">${weekNum}</div>
+      <div class="week-meta">
+        <div class="week-title">${week.title}</div>
+        <div class="week-focus">${week.focus}</div>
+      </div>
+      <div class="week-status"><span class="week-badge ${badgeClass}">${badgeText}</span></div>
+      <div class="week-toggle" id="wt-${wi}">▾</div>
+    </div>
+    <div class="week-body" id="wb-${wi}">
+      <div class="week-inner">
+        <div class="task-list" id="tl-${wi}">${renderTasks(week.tasks, wi)}</div>
+        <div class="wins-section">
+          <div class="wins-label">WINS THIS WEEK</div>
+          <div class="wins-list" id="wins-${wi}">${renderWins(week.wins || [], wi)}</div>
+          <div class="win-add">
+            <input type="text" id="win-input-${wi}" placeholder="Log a win — a result, a comment, a milestone...">
+            <button onclick="addWin(${wi})">+ ADD WIN</button>
+          </div>
+        </div>
+        <div class="disrupt-notes">
+          <div class="disrupt-notes-label">DISRUPT TEAM NOTES</div>
+          <textarea id="dn-${wi}" placeholder="Notes from your DISRUPT strategist will appear here..." oninput="updateDisruptNote(${wi}, this.value)">${week.disruptNote || ''}</textarea>
+        </div>
+      </div>
+    </div>`;
+    el.appendChild(card);
+
+    // Auto-open current week
+    if (isCurrent) toggleWeek(wi, true);
+  });
+}
+
+function renderTasks(tasks, wi) {
+  if (!tasks) return '';
+  return tasks.map((task, ti) => {
+    const status = task.status || 'not-started';
+    const btnClass = status === 'done' ? 'done' : status === 'in-progress' ? 'in-progress' : '';
+    return `<div class="task-row ${status === 'done' ? 'done-row' : ''}" id="tr-${wi}-${ti}">
+      <div class="task-top">
+        <button class="task-status-btn ${btnClass}" onclick="cycleStatus(${wi},${ti})">
+          <span class="task-check">✓</span>
+          <span class="task-amber"></span>
+        </button>
+        <span class="task-text">${task.text}</span>
+        <button class="task-expand" onclick="toggleTaskNotes(${wi},${ti})">NOTES ▾</button>
+      </div>
+      <div class="task-notes" id="tn-${wi}-${ti}">
+        <div class="task-status-row">
+          <button class="status-pill ${status==='not-started'?'active-not':''}" onclick="setStatus(${wi},${ti},'not-started')">Not started</button>
+          <button class="status-pill ${status==='in-progress'?'active-progress':''}" onclick="setStatus(${wi},${ti},'in-progress')">In progress</button>
+          <button class="status-pill ${status==='done'?'active-done':''}" onclick="setStatus(${wi},${ti},'done')">Done</button>
+        </div>
+        <textarea placeholder="Add notes, links, results, or context for this task..." oninput="updateTaskNote(${wi},${ti},this.value)">${task.notes||''}</textarea>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderWins(wins, wi) {
+  return (wins || []).map((w, i) =>
+    `<div class="win-row"><div class="win-dot"></div><span class="win-text">${escH(w)}</span><button class="win-del" onclick="removeWin(${wi},${i})">×</button></div>`
+  ).join('');
+}
+
+function renderMetrics(d) {
+  const el = document.getElementById('metrics-grid');
+  const metrics = [
+    { label: 'At-need cases', key: 'cases', target: d.targets?.cases ? '+' + Math.round(d.targets.cases/3) + '/mo target' : 'Track monthly' },
+    { label: 'Google reviews', key: 'reviews', target: 'Track monthly growth' },
+    { label: 'Facebook reach', key: 'reach', target: 'Avg. weekly reach' },
+    { label: 'Pre-need leads', key: 'leads', target: '5 leads/mo target' },
+  ];
+  el.innerHTML = '';
+  metrics.forEach(m => {
+    if (!d.metrics[m.key]) d.metrics[m.key] = [0, 0, 0];
+    const vals = d.metrics[m.key];
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    card.innerHTML = `<div class="metric-label">${m.label}</div>
+      <div class="metric-months">
+        ${['Month 1','Month 2','Month 3'].map((mo, i) => `
+          <div class="metric-month">
+            <div class="metric-month-label">${mo}</div>
+            <input class="metric-input" type="number" value="${vals[i]||''}" placeholder="—" oninput="updateMetric('${m.key}',${i},this.value)">
+            <div class="metric-target">${i===0?m.target:''}</div>
+          </div>`).join('')}
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+// ── INTERACTIONS ──────────────────────────────────────────────────────────────
+function toggleWeek(wi, forceOpen) {
+  const body = document.getElementById('wb-' + wi);
+  const head = document.getElementById('wh-' + wi);
+  const isOpen = body.classList.contains('open');
+  if (forceOpen || !isOpen) { body.classList.add('open'); head.classList.add('open'); }
+  else { body.classList.remove('open'); head.classList.remove('open'); }
+}
+
+function toggleTaskNotes(wi, ti) {
+  const el = document.getElementById('tn-' + wi + '-' + ti);
+  el.classList.toggle('open');
+}
+
+function cycleStatus(wi, ti) {
+  const statuses = ['not-started', 'in-progress', 'done'];
+  const current = userData.weeks[wi].tasks[ti].status || 'not-started';
+  const next = statuses[(statuses.indexOf(current) + 1) % statuses.length];
+  setStatus(wi, ti, next);
+}
+
+function setStatus(wi, ti, status) {
+  userData.weeks[wi].tasks[ti].status = status;
+  markUnsaved();
+
+  const row = document.getElementById('tr-' + wi + '-' + ti);
+  const btn = row.querySelector('.task-status-btn');
+  const txt = row.querySelector('.task-text');
+  btn.className = 'task-status-btn' + (status === 'done' ? ' done' : status === 'in-progress' ? ' in-progress' : '');
+  row.className = 'task-row' + (status === 'done' ? ' done-row' : '');
+
+  // Update status pills
+  const pills = row.querySelectorAll('.status-pill');
+  pills[0].className = 'status-pill' + (status === 'not-started' ? ' active-not' : '');
+  pills[1].className = 'status-pill' + (status === 'in-progress' ? ' active-progress' : '');
+  pills[2].className = 'status-pill' + (status === 'done' ? ' active-done' : '');
+
+  // Update week card status
+  const allDone = userData.weeks[wi].tasks.every(t => t.status === 'done');
+  const card = document.getElementById('week-card-' + wi);
+  if (allDone) card.classList.add('complete');
+  else card.classList.remove('complete');
+}
+
+function updateTaskNote(wi, ti, val) {
+  userData.weeks[wi].tasks[ti].notes = val;
+  markUnsaved();
+}
+
+function updateDisruptNote(wi, val) {
+  userData.weeks[wi].disruptNote = val;
+  markUnsaved();
+}
+
+function addWin(wi) {
+  const input = document.getElementById('win-input-' + wi);
+  const val = input.value.trim();
+  if (!val) return;
+  if (!userData.weeks[wi].wins) userData.weeks[wi].wins = [];
+  userData.weeks[wi].wins.push(val);
+  input.value = '';
+  document.getElementById('wins-' + wi).innerHTML = renderWins(userData.weeks[wi].wins, wi);
+  markUnsaved();
+}
+
+function removeWin(wi, i) {
+  userData.weeks[wi].wins.splice(i, 1);
+  document.getElementById('wins-' + wi).innerHTML = renderWins(userData.weeks[wi].wins, wi);
+  markUnsaved();
+}
+
+function updateMetric(key, idx, val) {
+  if (!userData.metrics[key]) userData.metrics[key] = [0, 0, 0];
+  userData.metrics[key][idx] = parseInt(val) || 0;
+  markUnsaved();
+}
+
+// ── SAVE ──────────────────────────────────────────────────────────────────────
+function saveData() {
+  if (!currentUser || currentUser === '__admin__') return;
+  const key = 'disrupt_client_' + btoa(currentUser);
+  localStorage.setItem(key, JSON.stringify(userData));
+  setSaveStatus('saved');
+  unsaved = false;
+}
+
+function markUnsaved() {
+  unsaved = true;
+  setSaveStatus('unsaved');
+}
+
+function setSaveStatus(state) {
+  const el = document.getElementById('save-status');
+  if (state === 'saved') { el.textContent = 'All changes saved'; el.className = 'save-status saved'; }
+  else { el.textContent = 'Unsaved changes'; el.className = 'save-status'; }
+}
+
+// Auto-save every 60 seconds
+setInterval(() => { if (unsaved && currentUser && currentUser !== '__admin__') saveData(); }, 60000);
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
