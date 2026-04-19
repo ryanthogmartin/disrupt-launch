@@ -187,25 +187,6 @@ section { padding:100px 40px; }
 .closing-sub { font-size:17px; color:var(--muted); line-height:1.7; margin-bottom:40px; }
 .closing-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
 
-/* ── SEND-ME-DEMO FORM ── */
-.demo-capture { margin-top:52px; padding-top:36px; border-top:1px solid var(--border); max-width:520px; margin-left:auto; margin-right:auto; }
-.demo-capture-label { font-family:var(--font-m); font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; text-align:center; }
-.demo-capture-eyebrow { font-family:var(--font-d); font-size:22px; color:var(--white); line-height:1.2; text-align:center; margin-bottom:18px; }
-.demo-capture-eyebrow span { color:var(--yellow); }
-.demo-capture-row { display:flex; gap:8px; }
-.demo-capture-input { flex:1; padding:14px 16px; background:var(--surface); border:1px solid var(--border2); border-radius:4px; color:var(--text); font-family:var(--font-b); font-size:15px; outline:none; transition:border-color .2s; }
-.demo-capture-input:focus { border-color:var(--yellow); }
-.demo-capture-btn { padding:14px 22px; background:var(--yellow); color:#000; border:none; border-radius:4px; font-family:var(--font-d); font-size:18px; letter-spacing:1px; cursor:pointer; transition:all .15s; white-space:nowrap; }
-.demo-capture-btn:hover:not(:disabled) { background:var(--yellow-dk); transform:translateY(-1px); }
-.demo-capture-btn:disabled { opacity:.5; cursor:not-allowed; }
-.demo-capture-status { margin-top:12px; text-align:center; font-size:13px; min-height:18px; }
-.demo-capture-status.success { color:var(--green); }
-.demo-capture-status.error   { color:#E74C3C; }
-@media (max-width:600px) {
-  .demo-capture-row { flex-direction:column; }
-  .demo-capture-btn { padding:14px; }
-}
-
 /* ── FOOTER ── */
 footer { border-top:1px solid var(--border); padding:32px 40px; display:flex; align-items:center; justify-content:space-between; }
 .footer-copy { font-family:var(--font-m); font-size:10px; color:var(--faint); letter-spacing:1px; }
@@ -591,16 +572,6 @@ body.demo-mode .hero{padding-top:156px;}
       <a href="https://buy.stripe.com/00w5kr6wn1hKfA4aC7dnW00" class="hero-btn hero-btn-ghost" style="font-size:18px;padding:14px 28px;">Self-Guided — $4,997</a>
       <a href="https://buy.stripe.com/4gM3cj7Ar2lObjOh0vdnW01" class="hero-btn hero-btn-primary" style="font-size:18px;padding:14px 28px;background:var(--pink);color:#fff;">Guided — $6,997 →</a>
     </div>
-
-    <div class="demo-capture">
-      <div class="demo-capture-label">Or, not ready yet?</div>
-      <div class="demo-capture-eyebrow">Get the demo <span>in your inbox.</span></div>
-      <form class="demo-capture-row" id="demo-capture-form" autocomplete="on" novalidate>
-        <input class="demo-capture-input" type="email" id="demo-capture-email" name="email" placeholder="you@funeralhome.com" required autocomplete="email">
-        <button class="demo-capture-btn" type="submit" id="demo-capture-btn">Send Demo →</button>
-      </form>
-      <div class="demo-capture-status" id="demo-capture-status" role="status" aria-live="polite"></div>
-    </div>
   </div>
 </section>
 
@@ -642,53 +613,6 @@ document.querySelectorAll('.hero-stat, .deliverable-card, .step, .checkin-card')
   el.style.transition = 'opacity 0.5s ease';
   observer.observe(el);
 });
-
-// ── SEND-ME-THE-DEMO FORM ──
-(function(){
-  const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  const WORKER_URL = isLocal ? 'http://localhost:8787' : 'https://disrupt-proxy.disruptmedia.workers.dev';
-  const WORKER_TOKEN = 'disrupt-2026-key'; // soft gate; real protection is the Worker's Origin allowlist + rate limit
-  const form = document.getElementById('demo-capture-form');
-  const input = document.getElementById('demo-capture-email');
-  const btn = document.getElementById('demo-capture-btn');
-  const status = document.getElementById('demo-capture-status');
-  if (!form) return;
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  form.addEventListener('submit', async function(e){
-    e.preventDefault();
-    const email = (input.value || '').trim();
-    status.className = 'demo-capture-status';
-    status.textContent = '';
-    if (!EMAIL_RE.test(email)) {
-      status.className = 'demo-capture-status error';
-      status.textContent = 'Please enter a valid email.';
-      input.focus();
-      return;
-    }
-    btn.disabled = true;
-    const originalLabel = btn.textContent;
-    btn.textContent = 'Sending…';
-    try {
-      const res = await fetch(WORKER_URL + '/share-demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Disrupt-Token': WORKER_TOKEN },
-        body: JSON.stringify({ email: email })
-      });
-      if (!res.ok) { throw new Error('HTTP ' + res.status); }
-      const data = await res.json().catch(() => ({}));
-      status.className = 'demo-capture-status success';
-      status.textContent = '✓ Check your inbox — the tour link is on its way.';
-      input.value = '';
-    } catch (err) {
-      console.warn('share-demo failed', err);
-      status.className = 'demo-capture-status error';
-      status.textContent = 'Something went wrong. Try again, or email ryan@disruptmedia.co directly.';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalLabel;
-    }
-  });
-})();
 </script>
 
 <script>
