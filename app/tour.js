@@ -69,15 +69,26 @@
         selector: '.mode-cards', position: 'bottom',
         eyebrow: 'TOUR · 1 of 4', title: 'Step 1: Pick Your Path',
         body: 'After payment, every owner lands here. Self-Guided or Guided — the experience adapts from this choice.' },
-      { before: function(){ gotoLaunchScreen('screen-q'); },
+      { before: function(){
+          // submitAccount() in demo mode loads DEMO_ANSWERS_DATA and renders Section 1.
+          // Without it, screen-q's #questions-container is empty.
+          // Then re-assert screen state so screen-mode (left active by step 1) is hidden.
+          if (typeof window.submitAccount === 'function') {
+            try { window.submitAccount(); } catch(e){ console.warn('[tour] submitAccount failed', e); }
+          }
+          gotoLaunchScreen('screen-q');
+          var pw = document.getElementById('progress-wrap');
+          if (pw) pw.style.display = 'flex';
+        },
         selector: '.q-wrap', position: 'top',
         eyebrow: 'TOUR · 2 of 4', title: 'Step 2: Six Sections, ~20 Minutes',
         body: 'Identity, market, personas, brand, services, goals. Every answer feeds the AI build — that\'s why the output is specific to your funeral home, not generic.',
         interactive: true },
       { before: function(){
-          gotoLaunchScreen('screen-out');
           if (typeof window.demoSkipToOutput === 'function') {
-            try { window.demoSkipToOutput(); } catch(e){}
+            try { window.demoSkipToOutput(); } catch(e){ console.warn('[tour] demoSkipToOutput failed', e); }
+          } else {
+            gotoLaunchScreen('screen-out');
           }
         },
         selector: '.out-panel.active', position: 'top',
