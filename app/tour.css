@@ -99,9 +99,8 @@
 
 .tour-progress {
   position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 16px;
+  left: 16px;
   z-index: 100001;
   display: flex;
   gap: 6px;
@@ -132,8 +131,8 @@
 
 .tour-skip {
   position: fixed;
-  top: 14px;
-  right: 14px;
+  bottom: 16px;
+  right: 16px;
   z-index: 100001;
   padding: 8px 14px;
   background: rgba(15,11,12,0.92);
@@ -151,9 +150,9 @@
 }
 .tour-skip:hover { color: #fff; border-color: #FF0166; }
 
-/* Push tour chrome below the demo bar (36px tall) when one is present */
+/* Bottom-anchored chrome doesn't need a demo-bar offset, kept for safety */
 body.tour-with-demo-bar .tour-progress,
-body.tour-with-demo-bar .tour-skip { top: 48px; }
+body.tour-with-demo-bar .tour-skip { bottom: 16px; }
 
 .tour-final-card {
   position: fixed;
