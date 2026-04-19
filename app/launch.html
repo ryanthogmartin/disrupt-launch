@@ -89,15 +89,15 @@ body { background: var(--black); color: var(--text); font-family: var(--font-bod
 .q-hint { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-style: italic; }
 
 /* inputs */
-input[type="text"], textarea {
+input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"], textarea {
   width: 100%; padding: 12px 14px;
   background: var(--surface); border: 1px solid var(--border2);
   color: var(--text); font-family: var(--font-body); font-size: 15px;
   border-radius: 3px; outline: none; transition: border-color 0.2s;
 }
-input[type="text"]:focus, textarea:focus { border-color: var(--green); }
+input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus, input[type="url"]:focus, input[type="number"]:focus, textarea:focus { border-color: var(--green); }
 textarea { resize: vertical; min-height: 96px; }
-.has-error input[type="text"], .has-error textarea { border-color: #E74C3C; }
+.has-error input[type="text"], .has-error input[type="email"], .has-error input[type="tel"], .has-error input[type="url"], .has-error input[type="number"], .has-error textarea { border-color: #E74C3C; }
 .err-msg { font-family: var(--font-mono); font-size: 10px; color: #E74C3C; letter-spacing: 1px; margin-top: 5px; }
 
 /* radio / checkbox */
