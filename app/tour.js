@@ -72,7 +72,8 @@
       { before: function(){ gotoLaunchScreen('screen-q'); },
         selector: '.q-wrap', position: 'top',
         eyebrow: 'TOUR · 2 of 4', title: 'Step 2: Six Sections, ~20 Minutes',
-        body: 'Identity, market, personas, brand, services, goals. Every answer feeds the AI build — that\'s why the output is specific to your funeral home, not generic.' },
+        body: 'Identity, market, personas, brand, services, goals. Every answer feeds the AI build — that\'s why the output is specific to your funeral home, not generic.',
+        interactive: true },
       { before: function(){
           gotoLaunchScreen('screen-out');
           if (typeof window.demoSkipToOutput === 'function') {
@@ -81,7 +82,8 @@
         },
         selector: '.out-panel.active', position: 'top',
         eyebrow: 'TOUR · 3 of 4', title: 'Step 3: Your Strategy Output',
-        body: 'Eight modules generated from your answers — goals, competitors, brand, personas, scripts, pre-need engine, and a 13-week roadmap. All ready to execute.' },
+        body: 'Eight modules generated from your answers — goals, competitors, brand, personas, scripts, pre-need engine, and a 13-week roadmap. All ready to execute.',
+        interactive: true },
       { final: true, eyebrow: 'TOUR · 4 of 4', title: 'Now The <span>Execution</span>',
         body: 'A strategy is only as good as its execution. The dashboard tracks your 90-day rollout — weekly tasks, wins logged, metrics watched.',
         buttons: [
@@ -97,11 +99,13 @@
       { before: function(){ gotoDashboardTab('home'); },
         selector: '#tab-home', position: 'top',
         eyebrow: 'TOUR · 2 of 4', title: 'Home: Progress At A Glance',
-        body: '90-day timeline, weekly progress, and the metrics that matter — cases, reviews, pre-need inquiries, reach.' },
+        body: '90-day timeline, weekly progress, and the metrics that matter — cases, reviews, pre-need inquiries, reach.',
+        interactive: true },
       { before: function(){ gotoDashboardTab('execute'); },
         selector: '#tab-execute', position: 'top',
         eyebrow: 'TOUR · 3 of 4', title: 'Execute: Weekly Tasks',
-        body: 'Each week\'s content tasks are pre-loaded from your roadmap. Check them off as you go and log wins as they happen.' },
+        body: 'Each week\'s content tasks are pre-loaded from your roadmap. Check them off as you go and log wins as they happen.',
+        interactive: true },
       { final: true, eyebrow: 'TOUR · 4 of 4', title: 'I\'m Ready, <span>Let\'s Go.</span>',
         body: 'You\'ve seen the offer, the intake, the AI output, and the execution dashboard. Pick your tier and start building today.',
         buttons: [
@@ -207,9 +211,11 @@
     var token = ++stepToken;
     var step = steps[i];
 
-    // Tear down any final-card from prior step
+    // Tear down any final-card or pause pill from prior step
     if (els.finalCard) { els.finalCard.remove(); els.finalCard = null; }
     if (els.finalBackdrop) { els.finalBackdrop.remove(); els.finalBackdrop = null; }
+    if (els.resumePill) { els.resumePill.remove(); els.resumePill = null; }
+    if (els.blocker) els.blocker.style.display = 'block';
 
     if (typeof step.before === 'function') {
       try { step.before(); } catch(e){ console.warn('[tour] before() failed', e); }
@@ -250,18 +256,51 @@
 
   function renderTooltip(step, rect, position){
     var canBack = idx > 0;
+    var exploreRow = step.interactive
+      ? '<div class="tour-explore-row">' +
+          '<button class="tour-btn tour-btn-explore" data-tour-explore>Click around — I\'ll wait ↓</button>' +
+        '</div>'
+      : '';
     var html =
       '<div class="tour-tooltip-eyebrow">' + escapeHtml(step.eyebrow || '') + '</div>' +
       '<div class="tour-tooltip-title">'   + escapeHtml(step.title   || '') + '</div>' +
       '<div class="tour-tooltip-body">'    + escapeHtml(step.body    || '') + '</div>' +
-      '<div class="tour-tooltip-actions">' +
+      '<div class="tour-tooltip-actions-row">' +
         '<button class="tour-btn tour-btn-back"' + (canBack ? '' : ' disabled') + ' data-tour-back>← Back</button>' +
         '<button class="tour-btn tour-btn-next" data-tour-next>' + (idx === steps.length - 1 ? 'Finish' : 'Next →') + '</button>' +
-      '</div>';
+      '</div>' +
+      exploreRow;
     els.tooltip.innerHTML = html;
     els.tooltip.querySelector('[data-tour-back]').onclick = function(){ if (canBack) showStep(idx - 1); };
     els.tooltip.querySelector('[data-tour-next]').onclick = function(){ showStep(idx + 1); };
+    var explore = els.tooltip.querySelector('[data-tour-explore]');
+    if (explore) explore.onclick = pauseTour;
     positionTooltip(rect, position);
+  }
+
+  function pauseTour(){
+    if (!els.tooltip) return;
+    els.tooltip.style.display = 'none';
+    els.spotlight.style.display = 'none';
+    if (els.blocker) els.blocker.style.display = 'none';
+    showResumePill();
+  }
+
+  function showResumePill(){
+    if (els.resumePill) { els.resumePill.style.display = 'flex'; return; }
+    els.resumePill = document.createElement('button');
+    els.resumePill.className = 'tour-resume-pill';
+    els.resumePill.innerHTML =
+      '<span class="tour-resume-pill-label">↺ Resume tour</span>' +
+      '<span class="tour-resume-pill-step">Step ' + (idx + 1) + ' of ' + steps.length + '</span>';
+    els.resumePill.onclick = resumeTour;
+    document.body.appendChild(els.resumePill);
+  }
+
+  function resumeTour(){
+    if (els.resumePill) { els.resumePill.remove(); els.resumePill = null; }
+    if (els.blocker) els.blocker.style.display = 'block';
+    showStep(idx);
   }
 
   function renderFinal(step){
