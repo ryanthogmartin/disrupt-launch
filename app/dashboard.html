@@ -1235,9 +1235,13 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
 
 <script>
 // ── DEMO MODE ─────────────────────────────────────────────────────────────────
+// ?demo=true  → full demo with the yellow "DEMO MODE — Heritage…" banner (for sales calls)
+// ?booth=true → same demo data, but no banner + logout hidden (for tablet at the conference booth)
 (function(){
-  const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
-  if(!isDemo) return;
+  const params   = new URLSearchParams(window.location.search);
+  const isDemo   = params.get('demo')  === 'true';
+  const isBooth  = params.get('booth') === 'true';
+  if(!isDemo && !isBooth) return;
 
   const DEMO_WP_RAW = {"1": {"tasks": [2, 2, 2, 2], "wins": "Building exterior Reel hit 4,200 views in 72 hours. Two families mentioned seeing the video when they called that same week."}, "2": {"tasks": [2, 2, 2, 2], "wins": "Butterfly release photo album drove 22 new page followers and 4 direct messages asking about grief support services."}, "3": {"tasks": [2, 2, 2, 2], "wins": "The Suit at 2 AM video reached 9,100 people organically. One family told us it was the reason they called us instead of a competitor."}, "4": {"tasks": [2, 2, 2, 2], "wins": "Pre-need educational post generated 3 phone inquiries in one week. Google reviews climbed from 85 to 89."}, "5": {"tasks": [2, 2, 1, 0], "wins": "Veterans tribute post shared 34 times \u2014 most shared content we have ever published."}, "6": {"tasks": [1, 0, 0, 0], "wins": ""}};
   const DEMO_METRICS = {"cases": 8, "reviews": 89, "preneed": 2, "reach": 4200};
@@ -1273,24 +1277,30 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
   // Override init to skip Supabase login check and load demo directly
   window.addEventListener('DOMContentLoaded', function() {
     setTimeout(async function() {
-      // Show demo banner
-      const bar = document.createElement('div');
-      const DEMO_BAR_H = 34;
-      bar.id = 'demo-top-bar';
-      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#F3CE24;color:#000;text-align:center;padding:0 8px;height:' + DEMO_BAR_H + 'px;display:flex;align-items:center;justify-content:center;font-family:DM Mono,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;';
-      bar.textContent = '⚡ DEMO MODE — Heritage Funeral Home — For Presentation Only';
-      document.body.prepend(bar);
-      // Push topbar below demo bar
-      const topbar = document.querySelector('.topbar');
-      if(topbar) topbar.style.top = DEMO_BAR_H + 'px';
-      // Push app content down by demo bar height
-      const appContent = document.querySelector('.app-content');
-      if(appContent) appContent.style.marginTop = (58 + DEMO_BAR_H) + 'px';
-      // Push strategy subnav down too
-      const subnav = document.querySelector('.strategy-subnav');
-      if(subnav) subnav.style.top = (58 + DEMO_BAR_H) + 'px';
-      // Update CSS variable so sticky elements offset correctly
-      document.documentElement.style.setProperty('--topbar-h', (58 + DEMO_BAR_H) + 'px');
+      // Show demo banner — skipped in booth mode so the tablet looks like a real client dashboard.
+      if (!isBooth) {
+        const bar = document.createElement('div');
+        const DEMO_BAR_H = 34;
+        bar.id = 'demo-top-bar';
+        bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#F3CE24;color:#000;text-align:center;padding:0 8px;height:' + DEMO_BAR_H + 'px;display:flex;align-items:center;justify-content:center;font-family:DM Mono,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;';
+        bar.textContent = '⚡ DEMO MODE — Heritage Funeral Home — For Presentation Only';
+        document.body.prepend(bar);
+        const topbar = document.querySelector('.topbar');
+        if(topbar) topbar.style.top = DEMO_BAR_H + 'px';
+        const appContent = document.querySelector('.app-content');
+        if(appContent) appContent.style.marginTop = (58 + DEMO_BAR_H) + 'px';
+        const subnav = document.querySelector('.strategy-subnav');
+        if(subnav) subnav.style.top = (58 + DEMO_BAR_H) + 'px';
+        document.documentElement.style.setProperty('--topbar-h', (58 + DEMO_BAR_H) + 'px');
+      }
+
+      // Booth mode hides the logout button so a prospect can't accidentally sign out
+      // during a booth demo (it would hard-reset the session + reveal the login screen).
+      if (isBooth) {
+        document.querySelectorAll('.icon-btn').forEach(function(btn){
+          if (btn.getAttribute('title') === 'Sign out') btn.style.display = 'none';
+        });
+      }
 
       // Set session
       SESSION.clientId = DEMO_CLIENT.id;
