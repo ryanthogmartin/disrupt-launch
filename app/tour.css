@@ -1,0 +1,244 @@
+/* ─────────────────────────────────────────────
+   DISRUPT Launch — Self-Guided Product Tour
+   Activated by ?tour=true. Designed to overlay
+   any page (light or dark theme). Uses the
+   DISRUPT design tokens directly so it matches
+   the host pages without needing CSS variables.
+   ───────────────────────────────────────────── */
+
+.tour-spotlight {
+  position: fixed;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 9999px rgba(10, 8, 9, 0.78),
+    0 0 0 3px rgba(255, 1, 102, 0.55),
+    0 0 32px rgba(255, 1, 102, 0.35);
+  z-index: 99998;
+  pointer-events: none;
+  transition: top .3s cubic-bezier(.4,0,.2,1),
+              left .3s cubic-bezier(.4,0,.2,1),
+              width .3s cubic-bezier(.4,0,.2,1),
+              height .3s cubic-bezier(.4,0,.2,1);
+}
+
+.tour-blocker {
+  position: fixed;
+  inset: 0;
+  z-index: 99997;
+  background: transparent;
+  cursor: default;
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 100000;
+  background: #0F0B0C;
+  color: #F0F0F0;
+  border: 1px solid #2A2A2A;
+  border-radius: 10px;
+  padding: 22px 24px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: 0 16px 56px rgba(0,0,0,0.55);
+  transition: top .3s cubic-bezier(.4,0,.2,1),
+              left .3s cubic-bezier(.4,0,.2,1),
+              opacity .2s;
+}
+
+.tour-tooltip-eyebrow {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 10px;
+  color: #FF0166;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.tour-tooltip-title {
+  font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+  font-size: 26px;
+  color: #FFFFFF;
+  line-height: 1.05;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.tour-tooltip-body {
+  color: #B8B8B8;
+  margin-bottom: 18px;
+  font-size: 14px;
+}
+
+.tour-tooltip-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tour-btn {
+  padding: 9px 16px;
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+  font-weight: 600;
+}
+.tour-btn-next { background: #FF0166; color: #fff; }
+.tour-btn-next:hover { background: #CC0052; }
+.tour-btn-back { background: transparent; color: #888; border: 1px solid #2A2A2A; }
+.tour-btn-back:hover { color: #fff; border-color: #444; }
+.tour-btn-back:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.tour-progress {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(15,11,12,0.92);
+  border: 1px solid #2A2A2A;
+  border-radius: 22px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.tour-progress-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.tour-progress-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #2A2A2A;
+  transition: all .2s;
+}
+.tour-progress-dot.done { background: #5A9016; }
+.tour-progress-dot.active { background: #F3CE24; box-shadow: 0 0 10px rgba(243,206,36,0.55); }
+
+.tour-skip {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 100001;
+  padding: 8px 14px;
+  background: rgba(15,11,12,0.92);
+  border: 1px solid #2A2A2A;
+  color: #888;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 22px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all .15s;
+}
+.tour-skip:hover { color: #fff; border-color: #FF0166; }
+
+/* Push tour chrome below the demo bar (36px tall) when one is present */
+body.tour-with-demo-bar .tour-progress,
+body.tour-with-demo-bar .tour-skip { top: 48px; }
+
+.tour-final-card {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100000;
+  background: #0F0B0C;
+  border: 1px solid #2A2A2A;
+  border-radius: 14px;
+  padding: 44px 40px;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+  box-shadow: 0 24px 96px rgba(0,0,0,0.65);
+}
+.tour-final-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #7DC422;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.tour-final-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  color: #fff;
+  line-height: 0.98;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+.tour-final-title span { color: #FF0166; text-shadow: 0 0 32px rgba(255,1,102,0.45); }
+.tour-final-body {
+  color: #B8B8B8;
+  margin-bottom: 28px;
+  font-size: 15px;
+  line-height: 1.65;
+  font-family: 'DM Sans', sans-serif;
+}
+.tour-final-buttons {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+.tour-final-buttons a, .tour-final-buttons button {
+  display: block;
+  padding: 14px 20px;
+  border-radius: 6px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  width: 100%;
+}
+.tour-final-buttons a.primary { background: #FF0166; color: #fff; }
+.tour-final-buttons a.primary:hover { background: #CC0052; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,1,102,0.4); }
+.tour-final-buttons a.secondary { background: transparent; color: #fff; border: 1px solid #2A2A2A; }
+.tour-final-buttons a.secondary:hover { border-color: #FF0166; color: #fff; }
+.tour-final-buttons .tour-end-link {
+  background: transparent;
+  color: #888;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  padding: 8px;
+}
+.tour-final-buttons .tour-end-link:hover { color: #fff; }
+
+.tour-final-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(10, 8, 9, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+@media (max-width: 600px) {
+  .tour-tooltip { width: calc(100vw - 32px); }
+  .tour-final-card { padding: 32px 24px; }
+  .tour-final-title { font-size: 38px; }
+}
