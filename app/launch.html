@@ -714,6 +714,12 @@ function startMode(m) {
   var isDemo = params.get('demo') === 'true' || params.get('tour') === 'true';
   if (!tier || isDemo) return;
   if (tier !== 'self' && tier !== 'guided') return;
+  // A real purchase just started. Any answers still in localStorage are either
+  // stale or pollution from a past demo visit — wipe them so the intake is a
+  // blank slate. We also clear the in-memory object in case anything read it
+  // before this block ran.
+  try { localStorage.removeItem('disrupt_answers'); } catch(e) {}
+  try { if (typeof answers === 'object' && answers) { for (var k in answers) delete answers[k]; } } catch(e) {}
   var welcome = document.getElementById('screen-welcome');
   var modeScreen = document.getElementById('screen-mode');
   if (!welcome || !modeScreen) return;
@@ -930,20 +936,32 @@ function clearErr(id) {
 }
 
 // ── PERSISTENCE ──────────────────────────────────────────────────────────────
+// Demo/tour flows use a separate storage key so they NEVER pollute a real
+// customer's saved answers. Without this split, any prospect who previously
+// browsed the demo would see the demo business name pre-filled in their own
+// real purchase (observed in production 2026-04-19).
+function answersStorageKey() {
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('demo') === 'true' || p.get('tour') === 'true') return 'disrupt_answers_demo';
+  } catch(e) {}
+  return 'disrupt_answers';
+}
+
 function persistAnswers() {
-  try { localStorage.setItem('disrupt_answers', JSON.stringify(answers)); } catch(e) {}
+  try { localStorage.setItem(answersStorageKey(), JSON.stringify(answers)); } catch(e) {}
 }
 
 function restoreAnswers() {
   try {
-    const saved = localStorage.getItem('disrupt_answers');
+    const saved = localStorage.getItem(answersStorageKey());
     if (saved) { answers = JSON.parse(saved); return true; }
   } catch(e) {}
   return false;
 }
 
 function clearSavedAnswers() {
-  try { localStorage.removeItem('disrupt_answers'); } catch(e) {}
+  try { localStorage.removeItem(answersStorageKey()); } catch(e) {}
 }
 
 // ── VALIDATION ───────────────────────────────────────────────────────────────
