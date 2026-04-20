@@ -385,9 +385,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
     <div class="login-product">DISRUPT Launch</div>
     <label class="login-label">Email</label>
     <input class="login-input" type="email" id="login-email" placeholder="you@yourbusiness.com" autocomplete="email">
-    <label class="login-label">PIN</label>
-    <input class="login-input" type="password" id="login-pin" placeholder="••••" maxlength="8" inputmode="numeric">
-    <div class="login-error" id="login-error">Invalid email or PIN. Try again.</div>
+    <label class="login-label">Password</label>
+    <input class="login-input" type="password" id="login-pin" placeholder="••••••••" autocomplete="current-password">
+    <div class="login-error" id="login-error">Invalid email or password. Try again.</div>
     <button class="login-btn" onclick="handleLogin()">Sign In</button>
   </div>
 </div>
@@ -494,21 +494,40 @@ function debouncedSave(fn, delay=600) {
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
+const WORKER_BASE = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://disrupt-proxy.disruptmedia.workers.dev';
+
 async function handleLogin() {
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const pin   = document.getElementById('login-pin').value.trim();
-  const err   = document.getElementById('login-error');
+  const email    = document.getElementById('login-email').value.trim().toLowerCase();
+  const password = document.getElementById('login-pin').value;
+  const err      = document.getElementById('login-error');
   err.style.display = 'none';
-  if (!email || !pin) { err.textContent = 'Enter your email and PIN.'; err.style.display = 'block'; return; }
+  if (!email || !password) { err.textContent = 'Enter your email and password.'; err.style.display = 'block'; return; }
   showLoading('Signing in...');
   try {
-    const { data: client, error } = await db.from('clients').select('*').eq('email', email).eq('pin', pin).single();
-    if (error || !client) { hideLoading(); err.textContent = 'Invalid email or PIN.'; err.style.display = 'block'; return; }
-    await db.from('clients').update({ last_login: new Date().toISOString() }).eq('id', client.id);
+    // Worker endpoint handles password-based login and falls back to the legacy
+    // PIN for existing admin accounts that predate password_hash.
+    const res = await fetch(WORKER_BASE + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      hideLoading();
+      err.textContent = data.error || 'Invalid email or password.';
+      err.style.display = 'block';
+      return;
+    }
+    // Pull the full client record from Supabase (for metrics, week_progress, etc.)
+    const { data: client } = await db.from('clients').select('*').eq('id', data.clientId).single();
     SESSION.clientId = client.id;
     SESSION.clientData = client;
     SESSION.role = client.role;
-    sessionStorage.setItem('disrupt_session', JSON.stringify({ id: client.id }));
+    sessionStorage.setItem('disrupt_session', JSON.stringify({ id: client.id, token: data.token }));
+    // Also mirror to localStorage so the landing page login modal can share the session
+    try { localStorage.setItem('disrupt_session', JSON.stringify({ token: data.token, clientId: client.id, email: client.email, contactName: client.contact_name, businessName: client.name, role: client.role })); } catch(e) {}
     if (!client.start_date && client.role !== 'admin') {
       hideLoading();
       document.getElementById('screen-login').classList.remove('active');
@@ -535,6 +554,7 @@ async function handleSetupDate() {
 
 async function handleLogout() {
   sessionStorage.removeItem('disrupt_session');
+  try { localStorage.removeItem('disrupt_session'); } catch(e) {}
   SESSION = { clientId:null, clientData:null, role:'client', weekProgress:{}, metrics:{cases:0,reviews:85,preneed:0,reach:0}, teamNotes:{}, allClients:[], viewingClientId:null, viewingClientData:null, activeWeek:1 };
   ['screen-app','screen-setup'].forEach(id => document.getElementById(id).classList.remove('active'));
   document.getElementById('screen-login').classList.add('active');

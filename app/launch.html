@@ -133,15 +133,15 @@ body { background: var(--black); color: var(--text); font-family: var(--font-bod
 .q-hint { font-size: 13px; color: var(--muted); margin-bottom: 10px; font-style: italic; }
 
 /* inputs */
-input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"], textarea {
+input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"], input[type="password"], textarea {
   width: 100%; padding: 12px 14px;
   background: var(--surface); border: 1px solid var(--border2);
   color: var(--text); font-family: var(--font-body); font-size: 15px;
   border-radius: 3px; outline: none; transition: border-color 0.2s;
 }
-input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus, input[type="url"]:focus, input[type="number"]:focus, textarea:focus { border-color: var(--green); }
+input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus, input[type="url"]:focus, input[type="number"]:focus, input[type="password"]:focus, textarea:focus { border-color: var(--green); }
 textarea { resize: vertical; min-height: 96px; }
-.has-error input[type="text"], .has-error input[type="email"], .has-error input[type="tel"], .has-error input[type="url"], .has-error input[type="number"], .has-error textarea { border-color: #E74C3C; }
+.has-error input[type="text"], .has-error input[type="email"], .has-error input[type="tel"], .has-error input[type="url"], .has-error input[type="number"], .has-error input[type="password"], .has-error textarea { border-color: #E74C3C; }
 .err-msg { font-family: var(--font-mono); font-size: 10px; color: #E74C3C; letter-spacing: 1px; margin-top: 5px; }
 
 /* radio / checkbox */
@@ -362,15 +362,31 @@ textarea { resize: vertical; min-height: 96px; }
       <div class="err-msg" id="acct-mobile-err" style="display:none;">Please enter your mobile number.</div>
     </div>
 
-    <div class="q-block" style="margin-bottom:28px;">
+    <div class="q-block" style="margin-bottom:20px;">
       <label class="q-label" for="acct-business">Funeral Home Name <span class="key-badge">Required</span></label>
       <input type="text" id="acct-business" placeholder="Huff-Guthrie Funeral Home & Cremation Services" autocomplete="organization">
       <div class="err-msg" id="acct-business-err" style="display:none;">Please enter your funeral home name.</div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid var(--border);">
+    <div class="q-block" style="margin-bottom:14px;">
+      <label class="q-label" for="acct-password">Create a Password <span class="key-badge">Required</span></label>
+      <div class="q-hint">You'll use this to log back in if you need to step away. At least 8 characters.</div>
+      <input type="password" id="acct-password" placeholder="••••••••" autocomplete="new-password" minlength="8">
+      <div class="err-msg" id="acct-password-err" style="display:none;">Password must be at least 8 characters.</div>
+    </div>
+
+    <div class="q-block" style="margin-bottom:28px;">
+      <label class="q-label" for="acct-password2">Confirm Password <span class="key-badge">Required</span></label>
+      <input type="password" id="acct-password2" placeholder="••••••••" autocomplete="new-password" minlength="8">
+      <div class="err-msg" id="acct-password2-err" style="display:none;">Passwords don't match.</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid var(--border);gap:12px;flex-wrap:wrap;">
       <button class="btn-back" onclick="backToMode()">← Back</button>
-      <button class="btn-next" onclick="submitAccount()">Start Building →</button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span id="acct-submit-err" style="font-family:var(--font-mono);font-size:11px;color:#E74C3C;"></span>
+        <button class="btn-next" id="acct-submit-btn" onclick="submitAccount()">Start Building →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -714,11 +730,11 @@ function startMode(m) {
   var isDemo = params.get('demo') === 'true' || params.get('tour') === 'true';
   if (!tier || isDemo) return;
   if (tier !== 'self' && tier !== 'guided') return;
-  // A real purchase just started. Any answers still in localStorage are either
-  // stale or pollution from a past demo visit — wipe them so the intake is a
-  // blank slate. We also clear the in-memory object in case anything read it
-  // before this block ran.
+  // A real purchase just started. Any answers + session still in localStorage
+  // belong to a prior buyer or stale demo visit — wipe everything so the new
+  // account creation is a blank slate.
   try { localStorage.removeItem('disrupt_answers'); } catch(e) {}
+  try { localStorage.removeItem('disrupt_session'); } catch(e) {}
   try { if (typeof answers === 'object' && answers) { for (var k in answers) delete answers[k]; } } catch(e) {}
   var welcome = document.getElementById('screen-welcome');
   var modeScreen = document.getElementById('screen-mode');
@@ -739,6 +755,8 @@ function startFromWelcome() {
   document.getElementById('screen-welcome').classList.remove('active');
   startMode(tier);
 }
+// The `resumeIfLoggedIn` IIFE has been moved below `loadSession` / `WORKER_BASE`
+// declarations so the const bindings are initialized before the IIFE runs.
 
 function backToMode() {
   document.getElementById('screen-account').classList.remove('active');
@@ -746,44 +764,131 @@ function backToMode() {
   document.getElementById('topbar-right').textContent = 'Step 1 of 6';
 }
 
-function submitAccount() {
+// Worker endpoint + session storage helpers. Auto-switches to the local dev
+// Worker during localhost testing so we don't hit production from a dev site.
+const WORKER_BASE = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://disrupt-proxy.disruptmedia.workers.dev';
+const SESSION_KEY = 'disrupt_session';
+function saveSession(data) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch(e) {} }
+function loadSession()     { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) { return null; } }
+function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch(e) {} }
+
+// On plain `/launch.html` (no ?tier=, no ?demo=, no ?tour=), if the browser
+// has a saved session token, resume the user straight into the intake at the
+// section they left off with their answers pre-loaded.
+(async function resumeIfLoggedIn(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('tier') || params.get('demo') === 'true' || params.get('tour') === 'true') return;
+  var s = loadSession();
+  if (!s || !s.token) return;
+  try {
+    var res = await fetch(WORKER_BASE + '/auth/resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: s.token })
+    });
+    if (res.status === 401) { clearSession(); return; }
+    if (!res.ok) return;
+    var data = await res.json();
+    if (data.state === 'dashboard') { location.replace('/dashboard.html'); return; }
+    // Load saved answers and jump straight to the intake
+    answers = Object.assign({}, data.intakeAnswers || {});
+    try { localStorage.setItem(answersStorageKey(), JSON.stringify(answers)); } catch(e) {}
+    document.getElementById('screen-mode').classList.remove('active');
+    document.getElementById('screen-welcome').classList.remove('active');
+    document.getElementById('screen-account').classList.remove('active');
+    document.getElementById('screen-q').classList.add('active');
+    document.getElementById('progress-wrap').style.display = 'flex';
+    document.getElementById('topbar-right').textContent = 'Welcome back · ' + (data.businessName || '');
+    buildProgressBar();
+    var lastSection = 0;
+    for (var i = 0; i < SECTIONS.length; i++) {
+      var anyAnswered = SECTIONS[i].questions.some(function(q){ return answers[q.id]; });
+      if (anyAnswered) lastSection = i;
+    }
+    renderSection(lastSection);
+  } catch(e) { /* silent — fall through to mode-select */ }
+})();
+
+async function submitAccount() {
   const name     = document.getElementById('acct-name').value.trim();
   const email    = document.getElementById('acct-email').value.trim();
   const mobile   = document.getElementById('acct-mobile').value.trim();
   const business = document.getElementById('acct-business').value.trim();
+  const password = document.getElementById('acct-password').value;
+  const password2= document.getElementById('acct-password2').value;
+  const submitErr = document.getElementById('acct-submit-err');
+  const btn = document.getElementById('acct-submit-btn');
   let valid = true;
 
-  ['acct-name-err','acct-email-err','acct-mobile-err','acct-business-err'].forEach(id => {
+  ['acct-name-err','acct-email-err','acct-mobile-err','acct-business-err','acct-password-err','acct-password2-err'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
-  ['acct-name','acct-email','acct-mobile','acct-business'].forEach(id => {
+  ['acct-name','acct-email','acct-mobile','acct-business','acct-password','acct-password2'].forEach(id => {
     document.getElementById(id).parentElement.classList.remove('has-error');
   });
+  submitErr.textContent = '';
 
-  if (!name)    { document.getElementById('acct-name-err').style.display='block';    document.getElementById('acct-name').parentElement.classList.add('has-error');    valid=false; }
-  if (!email || !email.includes('@')) { document.getElementById('acct-email-err').style.display='block';   document.getElementById('acct-email').parentElement.classList.add('has-error');   valid=false; }
-  if (!mobile)  { document.getElementById('acct-mobile-err').style.display='block';  document.getElementById('acct-mobile').parentElement.classList.add('has-error');  valid=false; }
-  if (!business){ document.getElementById('acct-business-err').style.display='block';document.getElementById('acct-business').parentElement.classList.add('has-error');valid=false; }
+  if (!name)     { document.getElementById('acct-name-err').style.display='block';    document.getElementById('acct-name').parentElement.classList.add('has-error');     valid=false; }
+  if (!email || !email.includes('@')) { document.getElementById('acct-email-err').style.display='block';   document.getElementById('acct-email').parentElement.classList.add('has-error');    valid=false; }
+  if (!mobile)   { document.getElementById('acct-mobile-err').style.display='block';  document.getElementById('acct-mobile').parentElement.classList.add('has-error');   valid=false; }
+  if (!business) { document.getElementById('acct-business-err').style.display='block';document.getElementById('acct-business').parentElement.classList.add('has-error'); valid=false; }
+  if (!password || password.length < 8) { document.getElementById('acct-password-err').style.display='block';   document.getElementById('acct-password').parentElement.classList.add('has-error');   valid=false; }
+  if (password !== password2) { document.getElementById('acct-password2-err').style.display='block'; document.getElementById('acct-password2').parentElement.classList.add('has-error'); valid=false; }
 
   if (!valid) return;
 
-  // Store account info and pre-fill business name into answers
-  answers['_acct_name']     = name;
-  answers['_acct_email']    = email;
-  answers['_acct_mobile']   = mobile;
-  answers['_acct_business'] = business;
-  answers['q1_1']           = business; // pre-fill into Identity section Q1
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating account…';
 
-  // Pre-fill email into dashboard setup modal when output arrives
-  document.getElementById('ds-name').value  = name;
-  document.getElementById('ds-email').value = email;
+  const tier = (window.__tierFromStripe || 'self');
 
-  document.getElementById('screen-account').classList.remove('active');
-  document.getElementById('screen-q').classList.add('active');
-  document.getElementById('progress-wrap').style.display = 'flex';
-  document.getElementById('topbar-right').textContent = 'Section 1 of 6';
-  buildProgressBar();
-  renderSection(0);
+  try {
+    const res = await fetch(WORKER_BASE + '/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, contactName: name, businessName: business, mobile, tier })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 409) {
+        submitErr.innerHTML = 'That email already has an account. <a href="#" onclick="openLoginModal(); return false;" style="color:var(--pink);font-weight:600;">Log in instead →</a>';
+      } else {
+        submitErr.textContent = data.error || ('Signup failed (' + res.status + ')');
+      }
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+      return;
+    }
+
+    // Persist session locally so page refreshes + intake saves stay authenticated
+    saveSession({ token: data.token, clientId: data.clientId, email: data.email, contactName: data.contactName, businessName: data.businessName, tier: data.tier });
+
+    // Seed the answers object with the account info so the questionnaire can pre-fill
+    answers['_acct_name']     = name;
+    answers['_acct_email']    = email;
+    answers['_acct_mobile']   = mobile;
+    answers['_acct_business'] = business;
+    answers['q1_1']           = business;
+    persistAnswers();
+
+    // Pre-fill dashboard setup modal values
+    document.getElementById('ds-name').value  = name;
+    document.getElementById('ds-email').value = email;
+
+    document.getElementById('screen-account').classList.remove('active');
+    document.getElementById('screen-q').classList.add('active');
+    document.getElementById('progress-wrap').style.display = 'flex';
+    document.getElementById('topbar-right').textContent = 'Section 1 of 6';
+    buildProgressBar();
+    renderSection(0);
+  } catch (e) {
+    submitErr.textContent = 'Network issue. Check your connection and try again.';
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 
 // ── PROGRESS BAR ─────────────────────────────────────────────────────────────
@@ -950,6 +1055,31 @@ function answersStorageKey() {
 
 function persistAnswers() {
   try { localStorage.setItem(answersStorageKey(), JSON.stringify(answers)); } catch(e) {}
+  // Also sync to Supabase (debounced) so the user can resume from another device.
+  // Only for real purchases — demo/tour sessions don't have a session token.
+  try {
+    var s = typeof loadSession === 'function' ? loadSession() : null;
+    if (s && s.token) scheduleServerSync();
+  } catch(e) {}
+}
+
+var _syncTimer = null;
+function scheduleServerSync() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncAnswersToServer, 1200);
+}
+async function syncAnswersToServer() {
+  _syncTimer = null;
+  var s = loadSession();
+  if (!s || !s.token) return;
+  try {
+    var res = await fetch(WORKER_BASE + '/auth/save-answers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: s.token, answers: answers })
+    });
+    if (res.status === 401) clearSession();  // session expired — they'll need to log in
+  } catch(e) { /* best-effort; localStorage still has the data */ }
 }
 
 function restoreAnswers() {
