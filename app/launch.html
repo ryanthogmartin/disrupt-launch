@@ -776,26 +776,28 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
 
 // On plain `/launch.html` (no ?tier=, no ?demo=, no ?tour=), if the browser
 // has a saved session token, resume the user straight into the intake at the
-// section they left off with their answers pre-loaded.
+// section they left off, answers pre-loaded. We hide `screen-mode` up front
+// so the returning user never sees the "pick your path" screen flash before
+// the redirect.
 (async function resumeIfLoggedIn(){
   var params = new URLSearchParams(location.search);
   if (params.get('tier') || params.get('demo') === 'true' || params.get('tour') === 'true') return;
   var s = loadSession();
   if (!s || !s.token) return;
+  var modeEl = document.getElementById('screen-mode');
+  if (modeEl) modeEl.classList.remove('active');
   try {
     var res = await fetch(WORKER_BASE + '/auth/resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: s.token })
     });
-    if (res.status === 401) { clearSession(); return; }
-    if (!res.ok) return;
+    if (res.status === 401) { clearSession(); if (modeEl) modeEl.classList.add('active'); return; }
+    if (!res.ok) { if (modeEl) modeEl.classList.add('active'); return; }
     var data = await res.json();
     if (data.state === 'dashboard') { location.replace('/dashboard.html'); return; }
-    // Load saved answers and jump straight to the intake
     answers = Object.assign({}, data.intakeAnswers || {});
     try { localStorage.setItem(answersStorageKey(), JSON.stringify(answers)); } catch(e) {}
-    document.getElementById('screen-mode').classList.remove('active');
     document.getElementById('screen-welcome').classList.remove('active');
     document.getElementById('screen-account').classList.remove('active');
     document.getElementById('screen-q').classList.add('active');
@@ -808,7 +810,10 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
       if (anyAnswered) lastSection = i;
     }
     renderSection(lastSection);
-  } catch(e) { /* silent — fall through to mode-select */ }
+  } catch(e) {
+    console.warn('resume failed, falling back to mode-select', e);
+    if (modeEl) modeEl.classList.add('active');
+  }
 })();
 
 async function submitAccount() {
