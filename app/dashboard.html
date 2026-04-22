@@ -1660,6 +1660,7 @@ function renderStrategyScripts() {
     const platform = extractField(sb.content, 'PLATFORM');
     const runtime  = extractField(sb.content, 'RUNTIME');
     const persona  = extractField(sb.content, 'PERSONA TARGET');
+    const source   = extractField(sb.content, 'SOURCE');
     const note     = extractField(sb.content, 'DIRECTOR NOTES') || extractField(sb.content, 'DIRECTOR NOTE');
     // Pull unique beats — first matching key wins so we don't get duplicates
     const seen = new Set();
@@ -1672,7 +1673,7 @@ function renderStrategyScripts() {
         beats.push({ name: bf.display, time: bf.time, text: txt });
       }
     }
-    const tags = [platform, runtime, persona].filter(Boolean);
+    const tags = [platform, runtime, persona, source].filter(Boolean);
     return `
       <div class="script-card">
         <div class="script-hd" onclick="toggleScript(this)">

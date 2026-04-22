@@ -1205,21 +1205,35 @@ function goBack() { if (currentSection > 0) renderSection(currentSection - 1); }
 function jumpTo(i) { renderSection(i); }
 
 // ── GENERATION ───────────────────────────────────────────────────────────────
-// All 8 modules are independent — they all consume the same intake context
-// and none depends on another's output. So we fire them in parallel via
-// Promise.allSettled. Any that fail get a silent second attempt. Only if a
-// module is still broken after 2 tries do we surface the retry screen —
-// listing exactly which modules need to be re-run, not the whole batch.
-const MODULE_DEFS = [
+// Two-phase generation:
+//
+// Phase 1 (parallel, ~2–3 min) — 7 modules that only need the raw intake context:
+//   goals, competitors, brand, personas, preneed, roadmap, week1
+//
+// Phase 2 (after phase 1 done) — 1 module that needs phase-1 output as input:
+//   scripts. The scripts module writes in the client's exact brand voice, targets
+//   their named personas, and produces one script for every video in Week 1 plus
+//   one evergreen script per message pillar. So it can only run after brand +
+//   personas + week1 + roadmap have been generated.
+//
+// All 8 cards show up front as "pending". Phase 1 animates them. The scripts
+// card stays pending until phase 1 completes, then goes active → done. Any
+// failed module gets one silent retry; if still failed after that, we show
+// the retry screen listing exactly which modules need to re-run (preserves
+// the successful output).
+const PHASE_1_MODULES = [
   { key: 'goals',       label: 'Goals & Scorecard',  fn: generateGoals       },
   { key: 'competitors', label: 'Competitor Intel',   fn: generateCompetitors },
   { key: 'brand',       label: 'Brand Guidelines',   fn: generateBrand       },
   { key: 'personas',    label: 'Customer Personas',  fn: generatePersonas    },
-  { key: 'scripts',     label: 'Video Scripts',      fn: generateScripts     },
   { key: 'preneed',     label: 'Pre-Need Engine',    fn: generatePreneed     },
   { key: 'roadmap',     label: '90-Day Roadmap',     fn: generateRoadmap     },
   { key: 'week1',       label: 'Week 1 Calendar',    fn: generateWeek1       },
 ];
+const PHASE_2_MODULES = [
+  { key: 'scripts',     label: 'Video Scripts',      fn: generateScripts     },
+];
+const ALL_MODULES = PHASE_1_MODULES.concat(PHASE_2_MODULES);
 
 function setModuleState(key, state) {
   const el = document.getElementById('gcard-' + key);
@@ -1240,10 +1254,10 @@ function updateGenProgress() {
     : (doneCount + ' of 8 modules complete');
 }
 
-async function runModule(mod, ctx) {
+async function runModule(mod, arg) {
   setModuleState(mod.key, 'active');
   try {
-    await mod.fn(ctx);
+    await mod.fn(arg);
     setModuleState(mod.key, 'done');
     updateGenProgress();
     return { ok: true };
@@ -1251,6 +1265,19 @@ async function runModule(mod, ctx) {
     setModuleState(mod.key, 'failed');
     return { ok: false, error: e.message || String(e) };
   }
+}
+
+async function runBatch(modules, arg) {
+  // Run a batch in parallel with one silent retry pass for any failures.
+  // Returns the list of modules that still failed after retry.
+  const firstPass = await Promise.all(modules.map(m => runModule(m, arg)));
+  let failed = modules.filter((_, i) => !firstPass[i].ok);
+  if (failed.length) {
+    console.warn('Retrying failed modules:', failed.map(m => m.key));
+    const retryResults = await Promise.all(failed.map(m => runModule(m, arg)));
+    failed = failed.filter((_, i) => !retryResults[i].ok);
+  }
+  return failed;
 }
 
 async function startGeneration() {
@@ -1261,25 +1288,35 @@ async function startGeneration() {
 
   const ctx = buildContext();
 
-  // Reset all 8 cards to pending
-  MODULE_DEFS.forEach(m => setModuleState(m.key, 'pending'));
+  // All 8 cards start as pending. Phase 1 fires immediately; scripts card
+  // stays "pending" visually until phase 1 finishes.
+  ALL_MODULES.forEach(m => setModuleState(m.key, 'pending'));
   updateGenProgress();
 
-  // Fire all 8 in parallel
-  const firstPass = await Promise.all(MODULE_DEFS.map(m => runModule(m, ctx)));
-  let failed = MODULE_DEFS.filter((_, i) => !firstPass[i].ok);
-
-  // Silent retry pass for any failures
-  if (failed.length) {
-    console.warn('Retrying failed modules:', failed.map(m => m.key));
-    const retryResults = await Promise.all(failed.map(m => runModule(m, ctx)));
-    failed = failed.filter((_, i) => !retryResults[i].ok);
+  // Phase 1: 7 modules in parallel using raw intake context
+  const phase1Failed = await runBatch(PHASE_1_MODULES, ctx);
+  if (phase1Failed.length) {
+    const names = phase1Failed.map(m => m.label).join(', ');
+    console.error('Phase 1 modules still failing after retry:', phase1Failed.map(m => m.key));
+    showRetryScreen("We couldn't generate " + phase1Failed.length + ' of your modules (' + names + '). Your answers are saved.', phase1Failed);
+    return;
   }
 
-  if (failed.length) {
-    const names = failed.map(m => m.label).join(', ');
-    console.error('Modules still failing after retry:', failed.map(m => m.key));
-    showRetryScreen('We couldn\'t generate ' + failed.length + ' of your 8 modules (' + names + '). Your answers are saved.', failed);
+  // Phase 2: scripts — takes brand + personas + week1 + roadmap output as
+  // voice + content-plan context so scripts match the client's exact voice
+  // and cover every video in the plan (not just 5 disconnected themes).
+  const scriptsCtx = {
+    intake:   ctx,
+    brand:    generatedOutput.brand    || '',
+    personas: generatedOutput.personas || '',
+    week1:    generatedOutput.week1    || '',
+    roadmap:  generatedOutput.roadmap  || '',
+  };
+  const phase2Failed = await runBatch(PHASE_2_MODULES, scriptsCtx);
+  if (phase2Failed.length) {
+    const names = phase2Failed.map(m => m.label).join(', ');
+    console.error('Phase 2 modules still failing after retry:', phase2Failed.map(m => m.key));
+    showRetryScreen("We couldn't generate " + phase2Failed.length + ' of your modules (' + names + '). Your answers are saved.', phase2Failed);
     return;
   }
 
@@ -1411,12 +1448,20 @@ async function retryGeneration() {
   document.getElementById('screen-retry').classList.remove('active');
   document.getElementById('screen-gen').classList.add('active');
   const ctx = buildContext();
-  // If we know which modules failed, only retry those. Otherwise fall back
-  // to a full rerun (covers the edge case where someone lands here unexpectedly).
-  const toRun = _failedModules.length ? _failedModules : MODULE_DEFS;
+  // If we know which modules failed, only retry THOSE — preserves the output
+  // that already succeeded. Otherwise do a full rerun from scratch.
+  const toRun = _failedModules.length ? _failedModules : ALL_MODULES;
   toRun.forEach(m => setModuleState(m.key, 'pending'));
   updateGenProgress();
-  const results = await Promise.all(toRun.map(m => runModule(m, ctx)));
+  // Scripts needs phase-1 context; everything else just needs intake context.
+  const scriptsCtx = {
+    intake:   ctx,
+    brand:    generatedOutput.brand    || '',
+    personas: generatedOutput.personas || '',
+    week1:    generatedOutput.week1    || '',
+    roadmap:  generatedOutput.roadmap  || '',
+  };
+  const results = await Promise.all(toRun.map(m => runModule(m, m.key === 'scripts' ? scriptsCtx : ctx)));
   const stillFailed = toRun.filter((_, i) => !results[i].ok);
   if (stillFailed.length) {
     const names = stillFailed.map(m => m.label).join(', ');
@@ -1506,30 +1551,54 @@ async function generatePersonas(ctx) {
   setGenStep(3);
 }
 
-async function generateScripts(ctx) {
-  setGenStep(4);
+async function generateScripts(arg) {
+  // Scripts runs in Phase 2 — it receives an object with:
+  //   { intake, brand, personas, week1, roadmap }
+  // so it can write scripts in the client's EXACT brand voice, target their
+  // named personas' winning messages, and produce one script per video in
+  // the actual content plan (not 5 disconnected themes).
+  //
+  // Backward-compat: if called with a bare intake string (legacy retry), we
+  // wrap it into the same shape.
+  const input = typeof arg === 'string'
+    ? { intake: arg, brand: '', personas: '', week1: '', roadmap: '' }
+    : (arg || {});
+
   const scriptPrompt = [
-    'CLIENT INTELLIGENCE:\n' + ctx,
-    '\n\nGenerate 5 complete video scripts for social media ready to shoot. Use EXACTLY this structure for each:\n\n',
-    'SCRIPT 1: [TITLE]\n',
-    'PLATFORM: [Facebook / Instagram Reels / Both]\n',
-    'RUNTIME: [Target seconds]\n',
-    'PERSONA TARGET: [Which buyer this is written for]\n\n',
-    'HOOK (0-3 sec): [Word for word. Pattern interrupt. No slow intros. No Hi I am.]\n\n',
-    'PROBLEM (3-15 sec): [Word for word. The market truth or family pain point specific to this market.]\n\n',
-    'CREDIBILITY (15-25 sec): [Word for word. Why this home specifically. Use their differentiator.]\n\n',
-    'PROOF (25-40 sec): [Word for word. A specific story, fact, or operational detail.]\n\n',
-    'CTA (final 5 sec): [Word for word. One clear action tied to the emotional moment.]\n\n',
-    'DIRECTOR NOTES: [2-3 sentences on how to shoot this — location, B-roll, on-screen visuals]\n\n',
-    '---\n\n',
-    'Script 1: Their single biggest operational differentiator as the hook\n',
-    'Script 2: Pre-need urgency targeting the pre-planner persona trigger\n',
-    'Script 3: Directly addressing the family number 1 stated fear\n',
-    'Script 4: Community identity using their specific community involvement\n',
-    'Script 5: Anti-corporate positioning against the biggest named competitor without naming them',
+    'CLIENT INTELLIGENCE:\n', input.intake || '',
+    '\n\n==================================================',
+    '\nBRAND GUIDELINES (match this voice EXACTLY — do not invent a new voice):\n', input.brand || '[not available]',
+    '\n\n==================================================',
+    '\nCUSTOMER PERSONAS (target these specific humans with their specific winning messages):\n', input.personas || '[not available]',
+    '\n\n==================================================',
+    '\nWEEK 1 CONTENT CALENDAR (identify every video post here — each one needs a script):\n', input.week1 || '[not available]',
+    '\n\n==================================================',
+    '\n90-DAY ROADMAP (look for weekly themes that call for a video — those need scripts too):\n', input.roadmap || '[not available]',
+    '\n\n==================================================',
+    '\n\nYour job: produce production-ready video scripts for every video this client is planning to shoot in the next 13 weeks. Do not invent generic themes — tie every script to a specific post or theme from the content plan above.',
+    '\n\nRULES:',
+    '\n1. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
+    '\n2. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER words verbatim where natural.',
+    '\n3. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
+    '\n4. Write one script per video post in the Week 1 calendar. Plus one evergreen script per message pillar in the Brand Guidelines.',
+    '\n5. Minimum 8 scripts. Maximum 12. Don\'t pad.',
+    '\n\nFORMAT EACH SCRIPT EXACTLY (use these ALL-CAPS headers verbatim, no variations):',
+    '\n\nSCRIPT {N}: [Title — tied to the source post or pillar]',
+    '\nPLATFORM: [Facebook / Instagram Reels / Both]',
+    '\nRUNTIME: [Target seconds — 60-90 for Facebook, 30-60 for Reels]',
+    '\nPERSONA TARGET: [Which persona — use the persona\'s name from the Personas module]',
+    '\nSOURCE: [Which post/theme this script is for — e.g. "Week 1 Day 2 (Facebook Video)" or "Evergreen — Pillar 1"]',
+    '\n\nHOOK (0-3 sec): [Word for word in the client\'s brand voice. Pattern interrupt. No slow intros, no "Hi I\'m ___".]',
+    '\n\nPROBLEM (3-15 sec): [Word for word. The specific market truth or persona-specific pain point. Use the persona\'s TRUST TRIGGER language.]',
+    '\n\nCREDIBILITY (15-25 sec): [Word for word. Why this funeral home specifically — named staff, specific asset, specific differentiator from the intake.]',
+    '\n\nPROOF (25-40 sec): [Word for word. A specific story, fact, or operational detail pulled from the intake.]',
+    '\n\nCTA (final 5 sec): [Word for word. One clear action, in the brand voice, tied to the emotional moment. Consider echoing the persona\'s WINNING MESSAGE.]',
+    '\n\nDIRECTOR NOTES: [2-3 sentences specific to THIS client — their actual location, the named staff member on camera, what B-roll to grab, whether to use the real building.]',
+    '\n\n---\n\nNumber scripts SCRIPT 1: through SCRIPT N: sequentially. No headers, no preamble, just the scripts.',
   ].join('');
-  // 5 full video scripts with 6 sections each — needs the bigger token window.
-  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 8000 });
+
+  // 8-12 full scripts with 6 sections each — needs the full 12k-token window.
+  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 12000 });
 }
 
 async function generatePreneed(ctx) {
