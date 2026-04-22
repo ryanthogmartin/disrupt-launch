@@ -316,6 +316,20 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .strat-highlight{background:var(--green-sub);border:1px solid var(--green-dim);border-left:3px solid var(--green);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin-bottom:10px;}
 .strat-highlight-label{font-family:var(--font-mono);font-size:8px;color:var(--green-dk);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:block;}
 .strat-highlight-text{font-size:13px;color:var(--text2);line-height:1.65;}
+/* Graceful-fallback block — used when the AI drifted from expected headers so the
+   parsed card layout would be incomplete. Shows the raw text in a readable style. */
+.strat-raw{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:var(--radius);padding:20px 24px;font-size:13px;line-height:1.75;color:var(--text);white-space:pre-wrap;font-family:var(--font-mono);box-shadow:var(--card-shadow);}
+/* Nested sub-cards inside a strat-card (e.g. Pre-Need follow-up phases, Week 1 daily posts) */
+.strat-subcard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;}
+.strat-subcard-label{font-family:var(--font-mono);font-size:10px;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700;}
+.strat-subcard-dim{color:var(--muted);font-weight:400;letter-spacing:1px;}
+.strat-subcard-body{font-size:13px;line-height:1.65;color:var(--muted);}
+/* Strategy tab release gate — shown if a client reaches the tab before release */
+.strat-gate{max-width:520px;margin:60px auto;text-align:center;padding:48px 32px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--card-shadow);}
+.strat-gate-eyebrow{font-family:var(--font-mono);font-size:10px;color:var(--yellow-dk);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:14px;}
+.strat-gate-title{font-family:var(--font-display);font-size:28px;color:var(--text);line-height:1.15;margin-bottom:14px;}
+.strat-gate-title span{color:var(--pink);}
+.strat-gate-copy{font-size:14px;color:var(--muted);line-height:1.7;margin:0;}
 .strat-stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
 .strat-stat{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--yellow);border-radius:var(--radius);padding:14px 18px;flex:1;min-width:130px;}
 .strat-stat-num{font-family:var(--font-display);font-size:32px;color:var(--yellow-dk);line-height:1;display:block;}
@@ -1062,9 +1076,130 @@ async function updateMetric(key, val) {
 }
 
 // ── STRATEGY ──────────────────────────────────────────────────────────────────
+// Each renderer below follows the same pattern:
+//   1. Try to read the client's actual generated module text from
+//      intake_answers._strategy_generated_output[key]
+//   2. If present, parse the AI's plain-text output into structured chunks
+//      and render into the existing card UI.
+//   3. If parsing returns too little (AI drifted from expected headers),
+//      fall back to rendering the raw text in a styled readable container
+//      so the client still sees their strategy, just not in fancy cards.
+//   4. If no generated output at all (demo mode, admin-viewing-self, or a
+//      brand-new client without generation yet), show the hardcoded demo
+//      content — that's what makes the conference demo look great.
+
+function getGenOutput(moduleKey) {
+  const cd = SESSION.viewingClientData || SESSION.clientData;
+  const out = cd && cd.intake_answers && cd.intake_answers._strategy_generated_output;
+  if (!out) return null;
+  const v = out[moduleKey];
+  return (typeof v === 'string' && v.trim().length > 40) ? v : null;
+}
+
+// Split text on known ALL-CAPS section headers. Case-insensitive match, tolerates
+// trailing colon. Returns { headerStringUsed: contentBetweenHeaders }.
+function parseSections(text, headers) {
+  if (!text || !headers || !headers.length) return {};
+  const lines = text.split('\n');
+  const result = {};
+  let cur = null, buf = [];
+  const flush = () => { if (cur) result[cur] = buf.join('\n').trim(); };
+  const normalize = s => s.replace(/[:：]+$/,'').trim().toUpperCase();
+  const lookup = new Map(headers.map(h => [normalize(h), h]));
+  for (const raw of lines) {
+    const t = raw.trim();
+    const hit = t ? lookup.get(normalize(t)) : null;
+    if (hit) { flush(); cur = hit; buf = []; }
+    else { buf.push(raw); }
+  }
+  flush();
+  return result;
+}
+
+// Find all blocks that start with a line matching startPattern (regex).
+// Used for repeating items like COMPETITOR:, PERSONA N:, SCRIPT N:, PILLAR N:, DAY N.
+function splitRepeating(text, startPattern) {
+  if (!text) return [];
+  const items = [];
+  const lines = text.split('\n');
+  let current = null, buf = [];
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (t && startPattern.test(t)) {
+      if (current !== null) items.push({ header: current, content: buf.join('\n').trim() });
+      current = t;
+      buf = [];
+    } else if (current !== null) {
+      buf.push(raw);
+    }
+  }
+  if (current !== null) items.push({ header: current, content: buf.join('\n').trim() });
+  return items;
+}
+
+// Extract "FIELD NAME: value..." from a block. Value continues until the next
+// all-caps-field-looking line or a blank line (if the value already has content).
+function extractField(block, fieldName) {
+  if (!block) return '';
+  const lines = block.split('\n');
+  const escapedField = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const fieldRe = new RegExp('^\\s*' + escapedField + '\\s*[:：]\\s*(.*)$', 'i');
+  for (let i = 0; i < lines.length; i++) {
+    const m = fieldRe.exec(lines[i]);
+    if (m) {
+      let value = m[1].trim();
+      for (let j = i + 1; j < lines.length; j++) {
+        const next = lines[j].trim();
+        // Next all-caps field label → stop
+        if (/^[A-Z][A-Z0-9 &\/\-—–]{2,}\s*[:：]/.test(next)) break;
+        // Blank line after non-empty value → stop
+        if (!next && value) break;
+        if (next) value += (value ? '\n' : '') + next;
+      }
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+// Text → safe HTML. Escapes, supports **bold**, converts line breaks to <br>.
+function fmtText(s) {
+  if (!s) return '';
+  return escHtml(String(s)).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+}
+
+// Render the raw text in a readable fallback block when parsing comes up thin.
+function renderRawFallback(text) {
+  return `<div class="strat-raw">${fmtText(text)}</div>`;
+}
+
+// Release gate: a client who somehow reaches this tab before their strategy is
+// released sees the "under review" message instead of the rendered modules.
+// (This is defense-in-depth; computeClientState also blocks them from reaching
+// the dashboard at all in the normal flow.)
+function strategyIsGatedForClient() {
+  if (SESSION.role === 'admin') return false;
+  const cd = SESSION.clientData;
+  const a = cd && cd.intake_answers;
+  if (!a) return false;
+  if (a._tier === 'guided' && !a._strategy_released) return true;
+  return false;
+}
+
 function renderStrategy() {
+  if (strategyIsGatedForClient()) {
+    document.getElementById('tab-strategy').innerHTML = `
+      <div class="strategy-content">
+        <div class="strat-gate">
+          <div class="strat-gate-eyebrow">Under Strategist Review</div>
+          <div class="strat-gate-title">Your strategy is with your <span>DISRUPT strategist.</span></div>
+          <p class="strat-gate-copy">We'll email you the moment it's released — usually within 1 business day. You don't need to do anything in the meantime.</p>
+        </div>
+      </div>`;
+    return;
+  }
   const sections = ['goals','competitors','brand','personas','scripts','preneed','roadmap'];
-  const labels = ['Goals','Competitors','Brand','Personas','Scripts','Pre-Need','Roadmap'];
+  const labels   = ['Goals','Competitors','Brand','Personas','Scripts','Pre-Need','Roadmap'];
   document.getElementById('tab-strategy').innerHTML = `
     <div class="strategy-subnav">
       ${sections.map((s,i)=>`<button class="snav-btn${i===0?' active':''}" onclick="scrollToSection('${s}',this)">${labels[i]}</button>`).join('')}
@@ -1087,169 +1222,724 @@ function scrollToSection(id,btn) {
 }
 
 function renderStrategyGoals() {
-  return `<div class="strategy-section" id="section-goals">
+  const raw = getGenOutput('goals');
+  const wrap = body => `<div class="strategy-section" id="section-goals">
     <div class="strat-eyebrow">Goals &amp; Scorecard</div>
     <div class="strat-title">Where <span>Growth</span> Is Measured</div>
-    <div class="strat-stat-row">
-      <div class="strat-stat"><span class="strat-stat-num">+27</span><span class="strat-stat-label">Target Cases / 90 Days</span></div>
-      <div class="strat-stat"><span class="strat-stat-num">100</span><span class="strat-stat-label">Google Review Goal</span></div>
-      <div class="strat-stat"><span class="strat-stat-num">+6</span><span class="strat-stat-label">Pre-Need Inquiries</span></div>
-      <div class="strat-stat"><span class="strat-stat-num">$181K</span><span class="strat-stat-label">Revenue Target</span></div>
-    </div>
-    <div class="strat-highlight">
-      <span class="strat-highlight-label">90-Day Mission</span>
-      <div class="strat-highlight-text">Make Huff-Guthrie the most visible, most trusted, and most talked-about funeral home in Franklin and the surrounding communities — in a way that feels authentic, not performative.</div>
-    </div>
-    <div class="strat-card"><span class="strat-card-label">Revenue Model</span><div class="strat-card-body">27 additional cases × $6,700 average = <strong>$180,900 projected ROI</strong>. Monthly content investment pays for itself with a single incremental at-need case. Break-even happens in month one.</div></div>
-    <div class="strat-card"><span class="strat-card-label">Review Strategy</span><div class="strat-card-body">85 reviews at launch, 5.0 rating. Goal: 100 reviews by Day 90. Method: 2 text-based review requests per week, sent within 48 hours of service completion. Never mass blast. Always personal. Always specific.</div></div>
+    ${body}
   </div>`;
+
+  if (!raw) {
+    // Demo mode / no generation yet — keep polished conference content
+    return wrap(`
+      <div class="strat-stat-row">
+        <div class="strat-stat"><span class="strat-stat-num">+27</span><span class="strat-stat-label">Target Cases / 90 Days</span></div>
+        <div class="strat-stat"><span class="strat-stat-num">100</span><span class="strat-stat-label">Google Review Goal</span></div>
+        <div class="strat-stat"><span class="strat-stat-num">+6</span><span class="strat-stat-label">Pre-Need Inquiries</span></div>
+        <div class="strat-stat"><span class="strat-stat-num">$181K</span><span class="strat-stat-label">Revenue Target</span></div>
+      </div>
+      <div class="strat-highlight">
+        <span class="strat-highlight-label">90-Day Mission</span>
+        <div class="strat-highlight-text">Make Huff-Guthrie the most visible, most trusted, and most talked-about funeral home in Franklin and the surrounding communities — in a way that feels authentic, not performative.</div>
+      </div>
+      <div class="strat-card"><span class="strat-card-label">Revenue Model</span><div class="strat-card-body">27 additional cases × $6,700 average = <strong>$180,900 projected ROI</strong>. Monthly content investment pays for itself with a single incremental at-need case. Break-even happens in month one.</div></div>
+      <div class="strat-card"><span class="strat-card-label">Review Strategy</span><div class="strat-card-body">85 reviews at launch, 5.0 rating. Goal: 100 reviews by Day 90. Method: 2 text-based review requests per week, sent within 48 hours of service completion. Never mass blast. Always personal. Always specific.</div></div>
+    `);
+  }
+
+  const sec = parseSections(raw, [
+    'GROWTH TARGETS',
+    '90-DAY TARGETS',
+    '12-MONTH TARGETS',
+    'ROI PROJECTION',
+    'SUCCESS METRICS — WEEK BY WEEK',
+    'SUCCESS METRICS - WEEK BY WEEK',
+    'SUCCESS METRICS',
+    'KEY ASSUMPTIONS',
+  ]);
+
+  // If we didn't recover at least ~half the expected sections, show raw text
+  const found = Object.keys(sec).length;
+  if (found < 3) return wrap(renderRawFallback(raw));
+
+  const ninety  = sec['90-DAY TARGETS']  || '';
+  const twelve  = sec['12-MONTH TARGETS'] || '';
+  const roi     = sec['ROI PROJECTION']   || '';
+  const metrics = sec['SUCCESS METRICS — WEEK BY WEEK'] || sec['SUCCESS METRICS - WEEK BY WEEK'] || sec['SUCCESS METRICS'] || '';
+  const assume  = sec['KEY ASSUMPTIONS']  || '';
+  const growth  = sec['GROWTH TARGETS']   || '';
+
+  const card = (label, body) => body
+    ? `<div class="strat-card"><span class="strat-card-label">${escHtml(label)}</span><div class="strat-card-body">${fmtText(body)}</div></div>`
+    : '';
+
+  const openingBlock = growth && !/^[0-9]/.test(growth)
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">Growth Targets</span><div class="strat-highlight-text">${fmtText(growth)}</div></div>`
+    : card('Growth Targets', growth);
+
+  return wrap(`
+    ${openingBlock}
+    ${card('90-Day Targets', ninety)}
+    ${card('12-Month Targets', twelve)}
+    ${card('ROI Projection', roi)}
+    ${card('Weekly Success Metrics', metrics)}
+    ${card('Key Assumptions', assume)}
+  `);
 }
 
 function renderStrategyCompetitors() {
-  const comps = [
-    {name:'Gardinier-Warren Funeral Home',pos:'Legacy player — established brand, strong word of mouth',threat:'Families who prioritize tradition may default here without research.',attack:'They don\'t show up where the next generation of buyers lives: online, authentically, on video. Your content strategy out-positions them before the call is ever made.'},
-    {name:'Timothy Hartle Funeral Home',pos:'Low-visibility competitor — minimal digital presence',threat:'May win on price if families don\'t know the difference.',attack:'Invisible online. No reviews worth noting, no video content, no community presence. Every post you publish makes them look more absent.'},
-    {name:'Hile-Best Funeral Home',pos:'Perceived budget option — draws price-sensitive families',threat:'Families who lead with "how much does it cost" before understanding value.',attack:'Position price as a risk signal, not a feature. Your content educates families on what they\'re actually buying — before they ever compare quotes.'}
-  ];
-  return `<div class="strategy-section" id="section-competitors">
+  const raw = getGenOutput('competitors');
+  const wrap = body => `<div class="strategy-section" id="section-competitors">
     <div class="strat-eyebrow">Competitor Intel</div>
     <div class="strat-title">Know Your <span>Battlefield</span></div>
-    <div class="strat-highlight">
-      <span class="strat-highlight-label">Your Competitive Position</span>
-      <div class="strat-highlight-text"><strong>Huff-Guthrie is the only full-service, owner-operated, community-rooted funeral home in Franklin with a full chapel, on-camera staff, and active grief programming.</strong> No competitor matches that combination. Stop defending — start declaring.</div>
-    </div>
-    ${comps.map(c=>`<div class="comp-card"><div class="comp-hd"><div class="comp-name">${c.name}</div><div class="comp-pos">${c.pos}</div></div>
-    <div class="comp-body">
-      <div><span class="comp-sl">Their Threat</span><div class="comp-text">${c.threat}</div></div>
-      <div class="comp-attack"><span class="comp-sl">Your Counter Move</span><div class="comp-text">${c.attack}</div></div>
-    </div></div>`).join('')}
+    ${body}
   </div>`;
+
+  if (!raw) {
+    const comps = [
+      {name:'Gardinier-Warren Funeral Home',pos:'Legacy player — established brand, strong word of mouth',threat:'Families who prioritize tradition may default here without research.',attack:'They don\'t show up where the next generation of buyers lives: online, authentically, on video. Your content strategy out-positions them before the call is ever made.'},
+      {name:'Timothy Hartle Funeral Home',pos:'Low-visibility competitor — minimal digital presence',threat:'May win on price if families don\'t know the difference.',attack:'Invisible online. No reviews worth noting, no video content, no community presence. Every post you publish makes them look more absent.'},
+      {name:'Hile-Best Funeral Home',pos:'Perceived budget option — draws price-sensitive families',threat:'Families who lead with "how much does it cost" before understanding value.',attack:'Position price as a risk signal, not a feature. Your content educates families on what they\'re actually buying — before they ever compare quotes.'}
+    ];
+    return wrap(`
+      <div class="strat-highlight">
+        <span class="strat-highlight-label">Your Competitive Position</span>
+        <div class="strat-highlight-text"><strong>Huff-Guthrie is the only full-service, owner-operated, community-rooted funeral home in Franklin with a full chapel, on-camera staff, and active grief programming.</strong> No competitor matches that combination. Stop defending — start declaring.</div>
+      </div>
+      ${comps.map(c=>`<div class="comp-card"><div class="comp-hd"><div class="comp-name">${escHtml(c.name)}</div><div class="comp-pos">${escHtml(c.pos)}</div></div>
+        <div class="comp-body">
+          <div><span class="comp-sl">Their Threat</span><div class="comp-text">${escHtml(c.threat)}</div></div>
+          <div class="comp-attack"><span class="comp-sl">Your Counter Move</span><div class="comp-text">${escHtml(c.attack)}</div></div>
+        </div></div>`).join('')}
+    `);
+  }
+
+  // Split top-level: COMPETITIVE LANDSCAPE / POSITIONING MAP / THE OPENING are one-off
+  // and COMPETITOR: N blocks repeat.
+  const sec = parseSections(raw, [
+    'COMPETITIVE LANDSCAPE',
+    'COMPETITIVE POSITIONING MAP',
+    'THE OPENING',
+  ]);
+  const landscape = sec['COMPETITIVE LANDSCAPE'] || '';
+  const opening   = sec['THE OPENING'] || '';
+  const positionMap = sec['COMPETITIVE POSITIONING MAP'] || '';
+
+  // Competitor blocks: lines starting with "COMPETITOR:" (case-insensitive)
+  const competitorItems = splitRepeating(raw, /^competitor\s*:/i);
+  // Per-competitor field extraction
+  const parsed = competitorItems.map(item => {
+    // Extract name from the header line: "COMPETITOR: The Name"
+    const name = item.header.replace(/^competitor\s*:\s*/i, '').trim();
+    return {
+      name,
+      position:  extractField(item.content, 'MARKET POSITION'),
+      strengths: extractField(item.content, 'STRENGTHS'),
+      weakness:  extractField(item.content, 'WEAKNESSES'),
+      attack:    extractField(item.content, 'ATTACK ANGLE'),
+      steal:     extractField(item.content, 'MESSAGE TO STEAL'),
+    };
+  }).filter(c => c.name);
+
+  if (!opening && !landscape && parsed.length === 0) return wrap(renderRawFallback(raw));
+
+  const highlight = opening
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">The Opening</span><div class="strat-highlight-text">${fmtText(opening)}</div></div>`
+    : (landscape
+        ? `<div class="strat-highlight"><span class="strat-highlight-label">Competitive Landscape</span><div class="strat-highlight-text">${fmtText(landscape)}</div></div>`
+        : '');
+
+  const landscapeCard = (opening && landscape)
+    ? `<div class="strat-card"><span class="strat-card-label">Competitive Landscape</span><div class="strat-card-body">${fmtText(landscape)}</div></div>`
+    : '';
+
+  const compCards = parsed.map(c => `
+    <div class="comp-card">
+      <div class="comp-hd">
+        <div class="comp-name">${escHtml(c.name)}</div>
+        ${c.position ? `<div class="comp-pos">${fmtText(c.position)}</div>` : ''}
+      </div>
+      <div class="comp-body">
+        ${c.strengths ? `<div><span class="comp-sl">Their Strengths</span><div class="comp-text">${fmtText(c.strengths)}</div></div>` : ''}
+        ${c.weakness  ? `<div><span class="comp-sl">Their Weaknesses</span><div class="comp-text">${fmtText(c.weakness)}</div></div>` : ''}
+        ${c.attack    ? `<div class="comp-attack"><span class="comp-sl">Your Attack Angle</span><div class="comp-text">${fmtText(c.attack)}</div></div>` : ''}
+        ${c.steal     ? `<div><span class="comp-sl">Message to Neutralize</span><div class="comp-text">${fmtText(c.steal)}</div></div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  const positionCard = positionMap
+    ? `<div class="strat-card"><span class="strat-card-label">Competitive Positioning Map</span><div class="strat-card-body">${fmtText(positionMap)}</div></div>`
+    : '';
+
+  return wrap(`${highlight}${landscapeCard}${compCards}${positionCard}`);
 }
 
 function renderStrategyBrand() {
-  const pillars = [
-    {title:'Show Up Completely',tagline:'"The Funeral Home That Shows Up"',body:'Suited professionals at every call. No casual dress, no exceptions. Community events that have nothing to do with funerals. A phone that gets answered. This is the operating standard that becomes the brand.'},
-    {title:'Own the Building',tagline:'115-year Victorian landmark as a competitive moat',body:'No competitor in your market has a building that tells a story like yours. Full chapel, real architecture, visible investment. Every camera angle is a differentiator.'},
-    {title:'Put Faces to the Name',tagline:'Adam and Maddison on camera, consistently',body:'Families choose people before they choose funeral homes. Adam\'s presence on video builds pre-trust before the call. Maddison brings a different energy — use both.'},
-    {title:'Lead With Aftercare',tagline:'Grief support as a proof point, not a pamphlet',body:'10+ annual events. Widow/widower lunches. Butterfly releases. Paint classes. Nobody else does this in your market. It\'s not a program — it\'s proof of your values.'},
-  ];
-  return `<div class="strategy-section" id="section-brand">
+  const raw = getGenOutput('brand');
+  const wrap = body => `<div class="strategy-section" id="section-brand">
     <div class="strat-eyebrow">Brand Guidelines</div>
     <div class="strat-title">The <span>Four Pillars</span></div>
-    <div class="strat-highlight">
-      <span class="strat-highlight-label">Brand Promise</span>
-      <div class="strat-highlight-text">"You\'ll never wonder if you made the right choice." That\'s the feeling every piece of content, every post, every video should create.</div>
-    </div>
-    <div class="strat-highlight">
-      <span class="strat-highlight-label">Recommended Tagline</span>
-      <div class="strat-highlight-text"><strong>The Funeral Home That Shows Up.</strong> Simple. Earned. Defensible. Every competitor can claim compassion — only Huff-Guthrie can prove they show up at 2 AM in a suit.</div>
-    </div>
-    ${pillars.map((p,i)=>`<div class="pillar-card"><div class="pillar-num">0${i+1}</div><div class="pillar-title">${p.title}</div><div class="pillar-tagline">${p.tagline}</div><div class="pillar-body">${p.body}</div></div>`).join('')}
-    <div style="margin-top:16px;">
-      <div class="strat-card-label" style="font-family:var(--font-mono);font-size:8px;color:var(--green-dk);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Voice & Tone</div>
-      <div class="dd-grid">
-        <div class="do-box"><span class="dd-label">Always Say</span><ul class="dd-list"><li>Direct, confident, specific</li><li>Stories over statistics</li><li>We show up — in every context</li><li>Named staff, real moments</li><li>Earned pride, not bragging</li></ul></div>
-        <div class="dont-box"><span class="dd-label">Never Say</span><ul class="dd-list"><li>At this difficult time...</li><li>We treat every family like our own</li><li>Caring, compassionate service</li><li>Affordable options available</li><li>Industry-leading anything</li></ul></div>
-      </div>
-    </div>
+    ${body}
   </div>`;
+
+  if (!raw) {
+    const pillars = [
+      {title:'Show Up Completely',tagline:'"The Funeral Home That Shows Up"',body:'Suited professionals at every call. No casual dress, no exceptions. Community events that have nothing to do with funerals. A phone that gets answered. This is the operating standard that becomes the brand.'},
+      {title:'Own the Building',tagline:'115-year Victorian landmark as a competitive moat',body:'No competitor in your market has a building that tells a story like yours. Full chapel, real architecture, visible investment. Every camera angle is a differentiator.'},
+      {title:'Put Faces to the Name',tagline:'Adam and Maddison on camera, consistently',body:'Families choose people before they choose funeral homes. Adam\'s presence on video builds pre-trust before the call. Maddison brings a different energy — use both.'},
+      {title:'Lead With Aftercare',tagline:'Grief support as a proof point, not a pamphlet',body:'10+ annual events. Widow/widower lunches. Butterfly releases. Paint classes. Nobody else does this in your market. It\'s not a program — it\'s proof of your values.'},
+    ];
+    return wrap(`
+      <div class="strat-highlight">
+        <span class="strat-highlight-label">Brand Promise</span>
+        <div class="strat-highlight-text">"You'll never wonder if you made the right choice." That's the feeling every piece of content, every post, every video should create.</div>
+      </div>
+      <div class="strat-highlight">
+        <span class="strat-highlight-label">Recommended Tagline</span>
+        <div class="strat-highlight-text"><strong>The Funeral Home That Shows Up.</strong> Simple. Earned. Defensible. Every competitor can claim compassion — only Huff-Guthrie can prove they show up at 2 AM in a suit.</div>
+      </div>
+      ${pillars.map((p,i)=>`<div class="pillar-card"><div class="pillar-num">0${i+1}</div><div class="pillar-title">${escHtml(p.title)}</div><div class="pillar-tagline">${escHtml(p.tagline)}</div><div class="pillar-body">${escHtml(p.body)}</div></div>`).join('')}
+      <div style="margin-top:16px;">
+        <div class="strat-card-label" style="font-family:var(--font-mono);font-size:8px;color:var(--green-dk);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Voice & Tone</div>
+        <div class="dd-grid">
+          <div class="do-box"><span class="dd-label">Always Say</span><ul class="dd-list"><li>Direct, confident, specific</li><li>Stories over statistics</li><li>We show up — in every context</li><li>Named staff, real moments</li><li>Earned pride, not bragging</li></ul></div>
+          <div class="dont-box"><span class="dd-label">Never Say</span><ul class="dd-list"><li>At this difficult time...</li><li>We treat every family like our own</li><li>Caring, compassionate service</li><li>Affordable options available</li><li>Industry-leading anything</li></ul></div>
+        </div>
+      </div>
+    `);
+  }
+
+  const sec = parseSections(raw, [
+    'POSITIONING STATEMENT',
+    'BRAND PROMISE',
+    'MESSAGE PILLARS',
+    'VOICE & TONE GUIDE',
+    "VOICE AND TONE GUIDE",
+    'TAGLINE OPTIONS',
+    'BRAND ANTI-PATTERNS',
+  ]);
+  const positioning = sec['POSITIONING STATEMENT'] || '';
+  const promise     = sec['BRAND PROMISE'] || '';
+  const pillarsTxt  = sec['MESSAGE PILLARS'] || '';
+  const voice       = sec['VOICE & TONE GUIDE'] || sec['VOICE AND TONE GUIDE'] || '';
+  const taglines    = sec['TAGLINE OPTIONS'] || '';
+  const antiPat     = sec['BRAND ANTI-PATTERNS'] || '';
+
+  if (!positioning && !promise && !pillarsTxt && !voice) return wrap(renderRawFallback(raw));
+
+  // Parse pillars: blocks starting with PILLAR N:
+  const pillarBlocks = splitRepeating(pillarsTxt, /^pillar\s*\d+\s*:/i);
+  const pillars = pillarBlocks.map(pb => {
+    const nameLine = pb.header.replace(/^pillar\s*\d+\s*:\s*/i, '').trim();
+    // Content often: "[Headline] — [support statement]" on next lines
+    const all = pb.content.trim();
+    let headline = '', support = all;
+    const emDash = all.indexOf('—');
+    if (emDash > 0 && emDash < 80) {
+      headline = all.slice(0, emDash).trim();
+      support = all.slice(emDash + 1).trim();
+    } else {
+      const firstLine = all.split('\n')[0].trim();
+      if (firstLine.length < 120 && all.split('\n').length > 1) {
+        headline = firstLine;
+        support = all.split('\n').slice(1).join('\n').trim();
+      }
+    }
+    return { name: nameLine, headline, support };
+  }).filter(p => p.name || p.headline || p.support);
+
+  // Parse voice DO / DON'T
+  const doItems = [];
+  const dontItems = [];
+  if (voice) {
+    const vlines = voice.split('\n');
+    let mode = null;
+    for (const line of vlines) {
+      const t = line.trim();
+      if (/^DO\s*[:：]/i.test(t))       { mode = 'do';   continue; }
+      if (/^DON'?T\s*[:：]/i.test(t))   { mode = 'dont'; continue; }
+      if (!t) { mode = null; continue; }
+      if (mode === 'do')   doItems.push(t.replace(/^[-•*\d.\s]+/, ''));
+      if (mode === 'dont') dontItems.push(t.replace(/^[-•*\d.\s]+/, ''));
+    }
+  }
+
+  // Recommended tagline — AI format: "RECOMMENDED: <num> and <reason>" on its own line
+  let recommendedTagline = '';
+  let taglineList = [];
+  if (taglines) {
+    const tlines = taglines.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of tlines) {
+      const recMatch = /^recommended\s*[:：]\s*(.*)$/i.exec(line);
+      if (recMatch) { recommendedTagline = recMatch[1]; continue; }
+      const numMatch = /^(\d+)\.\s*(.+)$/.exec(line);
+      if (numMatch) taglineList.push(numMatch[2]);
+    }
+  }
+
+  const promiseBlock = promise
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">Brand Promise</span><div class="strat-highlight-text">${fmtText(promise)}</div></div>`
+    : '';
+  const positioningBlock = positioning
+    ? `<div class="strat-card"><span class="strat-card-label">Positioning Statement</span><div class="strat-card-body">${fmtText(positioning)}</div></div>`
+    : '';
+  const recBlock = recommendedTagline
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">Recommended Tagline</span><div class="strat-highlight-text">${fmtText(recommendedTagline)}</div></div>`
+    : '';
+
+  const pillarCards = pillars.map((p, i) => `
+    <div class="pillar-card">
+      <div class="pillar-num">0${i + 1}</div>
+      <div class="pillar-title">${escHtml(p.name || '—')}</div>
+      ${p.headline ? `<div class="pillar-tagline">${escHtml(p.headline)}</div>` : ''}
+      <div class="pillar-body">${fmtText(p.support)}</div>
+    </div>
+  `).join('');
+
+  const voiceBlock = (doItems.length || dontItems.length) ? `
+    <div style="margin-top:16px;">
+      <div class="strat-card-label" style="font-family:var(--font-mono);font-size:8px;color:var(--green-dk);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Voice &amp; Tone</div>
+      <div class="dd-grid">
+        <div class="do-box"><span class="dd-label">Always Say</span><ul class="dd-list">${doItems.map(i => `<li>${escHtml(i)}</li>`).join('')}</ul></div>
+        <div class="dont-box"><span class="dd-label">Never Say</span><ul class="dd-list">${dontItems.map(i => `<li>${escHtml(i)}</li>`).join('')}</ul></div>
+      </div>
+    </div>` : (voice ? `<div class="strat-card"><span class="strat-card-label">Voice &amp; Tone Guide</span><div class="strat-card-body">${fmtText(voice)}</div></div>` : '');
+
+  const taglineListCard = taglineList.length
+    ? `<div class="strat-card"><span class="strat-card-label">Tagline Options</span><div class="strat-card-body">${taglineList.map((t, i) => `<div style="margin-bottom:6px;"><strong>${i + 1}.</strong> ${escHtml(t)}</div>`).join('')}</div></div>`
+    : '';
+
+  const antiBlock = antiPat
+    ? `<div class="strat-card"><span class="strat-card-label">Brand Anti-Patterns</span><div class="strat-card-body">${fmtText(antiPat)}</div></div>`
+    : '';
+
+  return wrap(`${promiseBlock}${positioningBlock}${recBlock}${pillarCards}${voiceBlock}${taglineListCard}${antiBlock}`);
 }
 
 function renderStrategyPersonas() {
-  const personas = [
-    {badge:'Primary Decision-Maker',name:'The Daughter Who Takes Charge',profile:'48–62, female, local or nearby, employed, adult children',trigger:'Called because nobody else will make the decision. Comes in overwhelmed.',fear:'Making the wrong choice and being judged by the rest of the family.',need:'Confidence that she picked right. Evidence before the call, not during it.',win:'"I chose them because of the videos I saw on Facebook. By the time I walked in, I already trusted them."'},
-    {badge:'Pre-Planner',name:'The Organized Widower',profile:'65–78, male, recently lost spouse, local, financially stable',trigger:'Watched his wife handle everything and doesn\'t want to burden his kids.',fear:'Being a burden. Leaving a mess. Having no say in his own final arrangements.',need:'A straightforward process. No pressure. Someone who respects his time.',win:'"They didn\'t try to sell me anything. They just helped me get it done."'},
-  ];
-  return `<div class="strategy-section" id="section-personas">
+  const raw = getGenOutput('personas');
+  const wrap = body => `<div class="strategy-section" id="section-personas">
     <div class="strat-eyebrow">Customer Personas</div>
     <div class="strat-title">Who Makes <span>The Call</span></div>
-    ${personas.map(p=>`<div class="persona-card">
-      <div class="persona-hd"><span class="persona-badge">${p.badge}</span><div class="persona-name">${p.name}</div><div class="persona-profile">${p.profile}</div></div>
-      <div class="persona-body">
-        <div><span class="persona-field-label">What Triggers the Decision</span><div class="persona-text">${p.trigger}</div></div>
-        <div><span class="persona-field-label">Primary Fear</span><div class="persona-text">${p.fear}</div></div>
-        <div><span class="persona-field-label">What They Need to Believe</span><div class="persona-text">${p.need}</div></div>
-        <div class="persona-win">"${p.win}"</div>
-      </div>
-    </div>`).join('')}
+    ${body}
   </div>`;
+
+  if (!raw) {
+    const personas = [
+      {badge:'Primary Decision-Maker',name:'The Daughter Who Takes Charge',profile:'48–62, female, local or nearby, employed, adult children',trigger:'Called because nobody else will make the decision. Comes in overwhelmed.',fear:'Making the wrong choice and being judged by the rest of the family.',need:'Confidence that she picked right. Evidence before the call, not during it.',win:'"I chose them because of the videos I saw on Facebook. By the time I walked in, I already trusted them."'},
+      {badge:'Pre-Planner',name:'The Organized Widower',profile:'65–78, male, recently lost spouse, local, financially stable',trigger:'Watched his wife handle everything and doesn\'t want to burden his kids.',fear:'Being a burden. Leaving a mess. Having no say in his own final arrangements.',need:'A straightforward process. No pressure. Someone who respects his time.',win:'"They didn\'t try to sell me anything. They just helped me get it done."'},
+    ];
+    return wrap(personas.map(p=>`<div class="persona-card">
+      <div class="persona-hd"><span class="persona-badge">${escHtml(p.badge)}</span><div class="persona-name">${escHtml(p.name)}</div><div class="persona-profile">${escHtml(p.profile)}</div></div>
+      <div class="persona-body">
+        <div><span class="persona-field-label">What Triggers the Decision</span><div class="persona-text">${escHtml(p.trigger)}</div></div>
+        <div><span class="persona-field-label">Primary Fear</span><div class="persona-text">${escHtml(p.fear)}</div></div>
+        <div><span class="persona-field-label">What They Need to Believe</span><div class="persona-text">${escHtml(p.need)}</div></div>
+        <div class="persona-win">${escHtml(p.win)}</div>
+      </div>
+    </div>`).join(''));
+  }
+
+  // AI emits: PERSONA 1: THE AT-NEED CALLER, PERSONA 2: THE PRE-PLANNER, PERSONA 3: THE ADULT CHILD RESEARCHER
+  const personaBlocks = splitRepeating(raw, /^persona\s*\d+\s*:/i);
+  if (personaBlocks.length === 0) return wrap(renderRawFallback(raw));
+
+  const parsed = personaBlocks.map(pb => {
+    const badge = pb.header.replace(/^persona\s*\d+\s*:\s*/i, '').trim();
+    return {
+      badge,
+      profile: extractField(pb.content, 'NAME & PROFILE') || extractField(pb.content, 'NAME AND PROFILE'),
+      moment:  extractField(pb.content, 'THE MOMENT'),
+      search:  extractField(pb.content, 'FIRST GOOGLE SEARCH'),
+      fears:   extractField(pb.content, 'TOP 3 FEARS'),
+      trust:   extractField(pb.content, 'TRUST TRIGGER'),
+      winning: extractField(pb.content, 'WINNING MESSAGE'),
+      review:  extractField(pb.content, 'REVIEW DRIVER'),
+    };
+  });
+
+  // Badge is the archetype from "PERSONA N: THE NAME". The NAME & PROFILE field
+  // usually reads "First Last, age, occupation, family situation" — we split on the
+  // first comma to separate the person's name from their demographic descriptors.
+  // If no comma, we treat the whole profile as descriptor and skip the name line.
+  const cards = parsed.map(p => {
+    let personName = '';
+    let descLine   = p.profile;
+    if (p.profile) {
+      const firstLine = p.profile.split('\n')[0].trim();
+      const commaIdx  = firstLine.indexOf(',');
+      if (commaIdx > 0 && commaIdx < 40) {
+        personName = firstLine.slice(0, commaIdx).trim();
+        descLine   = firstLine.slice(commaIdx + 1).trim();
+      } else {
+        descLine = firstLine;
+      }
+    }
+    return `
+    <div class="persona-card">
+      <div class="persona-hd">
+        <span class="persona-badge">${escHtml(p.badge)}</span>
+        ${personName ? `<div class="persona-name">${escHtml(personName)}</div>` : ''}
+        ${descLine   ? `<div class="persona-profile">${fmtText(descLine)}</div>` : ''}
+      </div>
+      <div class="persona-body">
+        ${p.moment  ? `<div><span class="persona-field-label">The Moment</span><div class="persona-text">${fmtText(p.moment)}</div></div>` : ''}
+        ${p.search  ? `<div><span class="persona-field-label">First Google Search</span><div class="persona-text">${fmtText(p.search)}</div></div>` : ''}
+        ${p.fears   ? `<div><span class="persona-field-label">Top 3 Fears</span><div class="persona-text">${fmtText(p.fears)}</div></div>` : ''}
+        ${p.trust   ? `<div><span class="persona-field-label">Trust Trigger</span><div class="persona-text">${fmtText(p.trust)}</div></div>` : ''}
+        ${p.review  ? `<div><span class="persona-field-label">Review Driver</span><div class="persona-text">${fmtText(p.review)}</div></div>` : ''}
+        ${p.winning ? `<div class="persona-win">${fmtText(p.winning)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return wrap(cards);
 }
 
 function renderStrategyScripts() {
-  const scripts = [
-    {title:'Script 1: The Suit at 2 AM',tags:['Facebook Video','60–90 sec','Adam on Camera'],beats:[
-      {name:'Hook',time:'0–5s',text:'You called us at 2 in the morning. I answered in a suit. That\'s not an accident — that\'s our standard.'},
-      {name:'Problem',time:'5–20s',text:'Most people don\'t know what to expect when they call a funeral home for the first time. They\'re scared. They\'ve never done this before. What they see in the first five minutes tells them everything.'},
-      {name:'Credibility',time:'20–40s',text:'I\'ve been doing this for 22 years. My father did it before me. And the one thing I know is that how you show up matters. It tells a family: we take this seriously. You made the right call.'},
-      {name:'CTA',time:'40–60s',text:'If you\'ve ever wondered what it feels like to have someone truly show up for your family — we\'d be honored to talk. Huff-Guthrie. Franklin, Pennsylvania.'}
-    ],note:'Film this in the entrance or prep room — somewhere that communicates professionalism. Adam should be in his full suit. No teleprompter. Let him tell it naturally, then trim.'},
-    {title:'Script 2: What Boujee Actually Means',tags:['Facebook Video','90 sec','Adam Direct-to-Camera'],beats:[
-      {name:'Hook',time:'0–5s',text:'People call us the most expensive funeral home in Franklin. They\'re not wrong. Here\'s why that doesn\'t bother me.'},
-      {name:'Problem',time:'5–25s',text:'When a family is making this decision — usually in one of the hardest moments of their lives — the last thing they need is to wonder what they\'re getting. Cheap is a gamble. And they\'re not playing with money — they\'re playing with how their person is remembered.'},
-      {name:'Proof',time:'25–55s',text:'We have a full-time grief counselor on staff. A 115-year-old building we\'ve never stopped investing in. A full chapel that seats over 200 people. Technology most homes don\'t offer. And staff who answer the phone at 2 AM in a suit. That\'s what the price pays for.'},
-      {name:'CTA',time:'55–90s',text:'We\'re not for everyone. But for families who want to know they got it right — we\'re the call you make once and never regret. Huff-Guthrie. The Funeral Home That Shows Up.'}
-    ],note:'Adam needs to own this one without apology. No hedging, no softening. The confidence IS the message. If he wavers, the whole thing falls apart. Do multiple takes and pick the one where he sounds most certain.'}
-  ];
-  return `<div class="strategy-section" id="section-scripts">
+  const raw = getGenOutput('scripts');
+  const wrap = body => `<div class="strategy-section" id="section-scripts">
     <div class="strat-eyebrow">Video Scripts</div>
     <div class="strat-title">Ready to <span>Film</span></div>
-    ${scripts.map((s,i)=>`<div class="script-card">
+    ${body}
+  </div>`;
+
+  if (!raw) {
+    const scripts = [
+      {title:'Script 1: The Suit at 2 AM',tags:['Facebook Video','60–90 sec','Adam on Camera'],beats:[
+        {name:'Hook',time:'0–5s',text:'You called us at 2 in the morning. I answered in a suit. That\'s not an accident — that\'s our standard.'},
+        {name:'Problem',time:'5–20s',text:'Most people don\'t know what to expect when they call a funeral home for the first time. They\'re scared. They\'ve never done this before. What they see in the first five minutes tells them everything.'},
+        {name:'Credibility',time:'20–40s',text:'I\'ve been doing this for 22 years. My father did it before me. And the one thing I know is that how you show up matters. It tells a family: we take this seriously. You made the right call.'},
+        {name:'CTA',time:'40–60s',text:'If you\'ve ever wondered what it feels like to have someone truly show up for your family — we\'d be honored to talk. Huff-Guthrie. Franklin, Pennsylvania.'}
+      ],note:'Film this in the entrance or prep room — somewhere that communicates professionalism. Adam should be in his full suit. No teleprompter. Let him tell it naturally, then trim.'},
+      {title:'Script 2: What Boujee Actually Means',tags:['Facebook Video','90 sec','Adam Direct-to-Camera'],beats:[
+        {name:'Hook',time:'0–5s',text:'People call us the most expensive funeral home in Franklin. They\'re not wrong. Here\'s why that doesn\'t bother me.'},
+        {name:'Problem',time:'5–25s',text:'When a family is making this decision — usually in one of the hardest moments of their lives — the last thing they need is to wonder what they\'re getting. Cheap is a gamble. And they\'re not playing with money — they\'re playing with how their person is remembered.'},
+        {name:'Proof',time:'25–55s',text:'We have a full-time grief counselor on staff. A 115-year-old building we\'ve never stopped investing in. A full chapel that seats over 200 people. Technology most homes don\'t offer. And staff who answer the phone at 2 AM in a suit. That\'s what the price pays for.'},
+        {name:'CTA',time:'55–90s',text:'We\'re not for everyone. But for families who want to know they got it right — we\'re the call you make once and never regret. Huff-Guthrie. The Funeral Home That Shows Up.'}
+      ],note:'Adam needs to own this one without apology. No hedging, no softening. The confidence IS the message. If he wavers, the whole thing falls apart. Do multiple takes and pick the one where he sounds most certain.'}
+    ];
+    return wrap(scripts.map((s,i)=>`<div class="script-card">
       <div class="script-hd" onclick="toggleScript(this)">
         <div class="script-num">${i+1}</div>
         <div class="script-meta">
-          <div class="script-title">${s.title}</div>
-          <div class="script-tags">${s.tags.map(t=>`<span class="script-tag">${t}</span>`).join('')}</div>
+          <div class="script-title">${escHtml(s.title)}</div>
+          <div class="script-tags">${s.tags.map(t=>`<span class="script-tag">${escHtml(t)}</span>`).join('')}</div>
         </div>
         <div class="script-toggle">▼</div>
       </div>
       <div class="script-body">
         <div class="script-inner">
-          ${s.beats.map(b=>`<div class="beat"><div class="beat-hd"><span class="beat-name">${b.name}</span><span class="beat-time">${b.time}</span></div><div class="beat-text">${b.text}</div></div>`).join('')}
-          <div class="director-note"><span class="dn-label">Director Note</span><div class="dn-text">${s.note}</div></div>
+          ${s.beats.map(b=>`<div class="beat"><div class="beat-hd"><span class="beat-name">${escHtml(b.name)}</span><span class="beat-time">${escHtml(b.time)}</span></div><div class="beat-text">${escHtml(b.text)}</div></div>`).join('')}
+          <div class="director-note"><span class="dn-label">Director Note</span><div class="dn-text">${escHtml(s.note)}</div></div>
         </div>
       </div>
-    </div>`).join('')}
-  </div>`;
+    </div>`).join(''));
+  }
+
+  const scriptBlocks = splitRepeating(raw, /^script\s*\d+\s*:/i);
+  if (scriptBlocks.length === 0) return wrap(renderRawFallback(raw));
+
+  // Field beats with their conventional time-range labels from the prompt
+  const BEAT_FIELDS = [
+    { key: 'HOOK (0-3 SEC)',              display: 'Hook',        time: '0–3s'      },
+    { key: 'HOOK',                         display: 'Hook',        time: ''          },
+    { key: 'PROBLEM (3-15 SEC)',          display: 'Problem',     time: '3–15s'     },
+    { key: 'PROBLEM',                      display: 'Problem',     time: ''          },
+    { key: 'CREDIBILITY (15-25 SEC)',     display: 'Credibility', time: '15–25s'    },
+    { key: 'CREDIBILITY',                  display: 'Credibility', time: ''          },
+    { key: 'PROOF (25-40 SEC)',           display: 'Proof',       time: '25–40s'    },
+    { key: 'PROOF',                        display: 'Proof',       time: ''          },
+    { key: 'CTA (FINAL 5 SEC)',           display: 'CTA',         time: 'final 5s'  },
+    { key: 'CTA',                          display: 'CTA',         time: ''          },
+  ];
+
+  const cards = scriptBlocks.map((sb, i) => {
+    const titleRaw = sb.header.replace(/^script\s*\d+\s*:\s*/i, '').trim();
+    const platform = extractField(sb.content, 'PLATFORM');
+    const runtime  = extractField(sb.content, 'RUNTIME');
+    const persona  = extractField(sb.content, 'PERSONA TARGET');
+    const note     = extractField(sb.content, 'DIRECTOR NOTES') || extractField(sb.content, 'DIRECTOR NOTE');
+    // Pull unique beats — first matching key wins so we don't get duplicates
+    const seen = new Set();
+    const beats = [];
+    for (const bf of BEAT_FIELDS) {
+      if (seen.has(bf.display)) continue;
+      const txt = extractField(sb.content, bf.key);
+      if (txt) {
+        seen.add(bf.display);
+        beats.push({ name: bf.display, time: bf.time, text: txt });
+      }
+    }
+    const tags = [platform, runtime, persona].filter(Boolean);
+    return `
+      <div class="script-card">
+        <div class="script-hd" onclick="toggleScript(this)">
+          <div class="script-num">${i + 1}</div>
+          <div class="script-meta">
+            <div class="script-title">${escHtml(titleRaw || ('Script ' + (i + 1)))}</div>
+            ${tags.length ? `<div class="script-tags">${tags.map(t => `<span class="script-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
+          </div>
+          <div class="script-toggle">▼</div>
+        </div>
+        <div class="script-body">
+          <div class="script-inner">
+            ${beats.map(b => `<div class="beat"><div class="beat-hd"><span class="beat-name">${escHtml(b.name)}</span>${b.time ? `<span class="beat-time">${escHtml(b.time)}</span>` : ''}</div><div class="beat-text">${fmtText(b.text)}</div></div>`).join('')}
+            ${note ? `<div class="director-note"><span class="dn-label">Director Note</span><div class="dn-text">${fmtText(note)}</div></div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return wrap(cards);
 }
 
 function renderStrategyPreneed() {
-  return `<div class="strategy-section" id="section-preneed">
+  const raw = getGenOutput('preneed');
+  const wrap = body => `<div class="strategy-section" id="section-preneed">
     <div class="strat-eyebrow">Pre-Need Engine</div>
     <div class="strat-title">Build the <span>Pipeline</span></div>
-    <div class="strat-highlight">
-      <span class="strat-highlight-label">The Core Insight</span>
-      <div class="strat-highlight-text">Pre-need families don\'t walk in because they saw an ad. They walk in because they trust you already — and that trust was built in a Facebook video, a grief event, a community post. Your content IS your pre-need lead funnel.</div>
-    </div>
-    <div class="strat-card"><span class="strat-card-label">The Pre-Need Sequence</span><div class="strat-card-body">
-      <strong>Step 1:</strong> Content builds awareness and trust over 6–12 weeks.<br><br>
-      <strong>Step 2:</strong> A specific pre-planning post (Week 7 in the roadmap) surfaces the offer without pressure.<br><br>
-      <strong>Step 3:</strong> CTA is soft: "Curious about pre-planning? We\'re happy to have a no-obligation conversation."<br><br>
-      <strong>Step 4:</strong> Walk-in or phone inquiry → Maddison handles the initial meeting.<br><br>
-      <strong>Goal:</strong> 2 qualified pre-need inquiries per month. 6 total in 90 days.
-    </div></div>
-    <div class="strat-card"><span class="strat-card-label">Content Triggers That Drive Pre-Need</span><div class="strat-card-body">
-      The Week 7 post on pre-planning is your dedicated push — but pre-need leads also come from: the midnight call video (shows availability), the grief events posts (builds relationship), and the competitor post (surfaces the risk of waiting). Any content that builds trust accelerates the pre-need decision.
-    </div></div>
+    ${body}
   </div>`;
+
+  if (!raw) {
+    return wrap(`
+      <div class="strat-highlight">
+        <span class="strat-highlight-label">The Core Insight</span>
+        <div class="strat-highlight-text">Pre-need families don't walk in because they saw an ad. They walk in because they trust you already — and that trust was built in a Facebook video, a grief event, a community post. Your content IS your pre-need lead funnel.</div>
+      </div>
+      <div class="strat-card"><span class="strat-card-label">The Pre-Need Sequence</span><div class="strat-card-body">
+        <strong>Step 1:</strong> Content builds awareness and trust over 6–12 weeks.<br><br>
+        <strong>Step 2:</strong> A specific pre-planning post (Week 7 in the roadmap) surfaces the offer without pressure.<br><br>
+        <strong>Step 3:</strong> CTA is soft: "Curious about pre-planning? We're happy to have a no-obligation conversation."<br><br>
+        <strong>Step 4:</strong> Walk-in or phone inquiry → Maddison handles the initial meeting.<br><br>
+        <strong>Goal:</strong> 2 qualified pre-need inquiries per month. 6 total in 90 days.
+      </div></div>
+      <div class="strat-card"><span class="strat-card-label">Content Triggers That Drive Pre-Need</span><div class="strat-card-body">
+        The Week 7 post on pre-planning is your dedicated push — but pre-need leads also come from: the midnight call video (shows availability), the grief events posts (builds relationship), and the competitor post (surfaces the risk of waiting). Any content that builds trust accelerates the pre-need decision.
+      </div></div>
+    `);
+  }
+
+  const sec = parseSections(raw, [
+    'PRE-NEED STRATEGY',
+    'LEAD MAGNET OFFER',
+    'LANDING PAGE COPY',
+    'FOLLOW-UP SEQUENCE',
+    'FACEBOOK AD COPY',
+  ]);
+  if (Object.keys(sec).length === 0) return wrap(renderRawFallback(raw));
+
+  const strategy = sec['PRE-NEED STRATEGY']  || '';
+  const offer    = sec['LEAD MAGNET OFFER']  || '';
+  const landing  = sec['LANDING PAGE COPY']  || '';
+  const followup = sec['FOLLOW-UP SEQUENCE'] || '';
+  const fbAd     = sec['FACEBOOK AD COPY']   || '';
+
+  // Offer fields
+  const offerName = extractField(offer, 'OFFER NAME');
+  const offerDesc = extractField(offer, 'OFFER DESCRIPTION');
+  const offerWhy  = extractField(offer, 'WHY IT WORKS');
+
+  // Landing page fields
+  const headline  = extractField(landing, 'HEADLINE');
+  const subhead   = extractField(landing, 'SUBHEADLINE');
+  const bodyCopy  = extractField(landing, 'BODY COPY');
+  const bullets   = extractField(landing, 'BULLET POINTS');
+  const ctaBtn    = extractField(landing, 'CTA BUTTON TEXT');
+
+  // Follow-up phases — each DAY or SAME DAY heading + content
+  const phaseBlocks = splitRepeating(followup, /^(SAME DAY|DAY \d+)\s*(—|-|–)/i);
+  const phaseCards = phaseBlocks.map(pb => {
+    const label = pb.header.replace(/\s*(—|-|–).*/i, '').trim();
+    const descriptor = pb.header.replace(/^(SAME DAY|DAY \d+)\s*(—|-|–)\s*/i, '').trim();
+    return `<div class="strat-subcard">
+      <div class="strat-subcard-label">${escHtml(label)}${descriptor ? ' <span class="strat-subcard-dim">· ' + escHtml(descriptor) + '</span>' : ''}</div>
+      <div class="strat-subcard-body">${fmtText(pb.content)}</div>
+    </div>`;
+  }).join('');
+
+  const strategyBlock = strategy
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">Pre-Need Strategy</span><div class="strat-highlight-text">${fmtText(strategy)}</div></div>`
+    : '';
+
+  const offerBlock = (offerName || offerDesc || offerWhy)
+    ? `<div class="strat-card"><span class="strat-card-label">Lead Magnet Offer</span><div class="strat-card-body">
+        ${offerName ? `<div style="margin-bottom:10px;"><strong>${escHtml(offerName)}</strong></div>` : ''}
+        ${offerDesc ? `<div style="margin-bottom:10px;">${fmtText(offerDesc)}</div>` : ''}
+        ${offerWhy  ? `<div style="font-size:13px;color:var(--muted);"><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;">Why it works:</span> ${fmtText(offerWhy)}</div>` : ''}
+      </div></div>`
+    : (offer ? `<div class="strat-card"><span class="strat-card-label">Lead Magnet Offer</span><div class="strat-card-body">${fmtText(offer)}</div></div>` : '');
+
+  const landingBlock = (headline || subhead || bodyCopy || bullets || ctaBtn)
+    ? `<div class="strat-card"><span class="strat-card-label">Landing Page Copy</span><div class="strat-card-body">
+        ${headline ? `<div style="font-family:var(--font-display);font-size:20px;color:var(--text);margin-bottom:8px;">${escHtml(headline)}</div>` : ''}
+        ${subhead  ? `<div style="color:var(--muted);margin-bottom:14px;">${fmtText(subhead)}</div>` : ''}
+        ${bodyCopy ? `<div style="margin-bottom:14px;">${fmtText(bodyCopy)}</div>` : ''}
+        ${bullets  ? `<div style="margin-bottom:14px;"><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">Bullets:</span><div style="margin-top:6px;">${fmtText(bullets)}</div></div>` : ''}
+        ${ctaBtn   ? `<div><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);">CTA Button:</span> <strong>${escHtml(ctaBtn)}</strong></div>` : ''}
+      </div></div>`
+    : (landing ? `<div class="strat-card"><span class="strat-card-label">Landing Page Copy</span><div class="strat-card-body">${fmtText(landing)}</div></div>` : '');
+
+  const followupBlock = (phaseCards || followup)
+    ? `<div class="strat-card"><span class="strat-card-label">Follow-Up Sequence</span><div class="strat-card-body">${phaseCards || fmtText(followup)}</div></div>`
+    : '';
+
+  const adBlock = fbAd
+    ? `<div class="strat-card"><span class="strat-card-label">Facebook Ad Copy</span><div class="strat-card-body">${fmtText(fbAd)}</div></div>`
+    : '';
+
+  return wrap(`${strategyBlock}${offerBlock}${landingBlock}${followupBlock}${adBlock}`);
 }
 
 function renderStrategyRoadmap() {
-  return `<div class="strategy-section" id="section-roadmap">
+  const raw = getGenOutput('roadmap');
+  const week1Raw = getGenOutput('week1');
+  const wrap = body => `<div class="strategy-section" id="section-roadmap">
     <div class="strat-eyebrow">90-Day Roadmap</div>
     <div class="strat-title">13 Weeks. <span>One Direction.</span></div>
-    <div style="overflow-x:auto;">
-    <table class="week-strat-table">
-      <thead><tr><td>Week</td><td>Theme</td><td>Content Mix</td></tr></thead>
-      <tbody>
-        ${WEEKS.map(w=>`<tr>
-          <td class="wst-num">${w.num}</td>
-          <td><div class="wst-theme">${w.theme}</div><div class="wst-focus">${w.focus}</div></td>
-          <td>${w.tasks.map(t=>`<span class="wst-tag">${t.split(':')[0]}</span>`).join(' ')}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-    </div>
+    ${body}
   </div>`;
+
+  if (!raw && !week1Raw) {
+    return wrap(`
+      <div style="overflow-x:auto;">
+        <table class="week-strat-table">
+          <thead><tr><td>Week</td><td>Theme</td><td>Content Mix</td></tr></thead>
+          <tbody>
+            ${WEEKS.map(w => `<tr>
+              <td class="wst-num">${w.num}</td>
+              <td><div class="wst-theme">${escHtml(w.theme)}</div><div class="wst-focus">${escHtml(w.focus)}</div></td>
+              <td>${w.tasks.map(t => `<span class="wst-tag">${escHtml(t.split(':')[0])}</span>`).join(' ')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `);
+  }
+
+  // Roadmap top-level headers
+  const sec = parseSections(raw || '', [
+    'CONTENT STRATEGY OVERVIEW',
+    'CONTENT PILLARS',
+    'PLATFORM STRATEGY',
+    'WEEKLY THEMES — MONTHS 1-3',
+    'WEEKLY THEMES - MONTHS 1-3',
+    'WEEKLY THEMES',
+    'REVIEW GENERATION STRATEGY',
+    '90-DAY MILESTONES',
+  ]);
+  const overview   = sec['CONTENT STRATEGY OVERVIEW'] || '';
+  const pillars    = sec['CONTENT PILLARS']           || '';
+  const platform   = sec['PLATFORM STRATEGY']         || '';
+  const weeklyTxt  = sec['WEEKLY THEMES — MONTHS 1-3'] || sec['WEEKLY THEMES - MONTHS 1-3'] || sec['WEEKLY THEMES'] || '';
+  const reviewStr  = sec['REVIEW GENERATION STRATEGY']|| '';
+  const milestones = sec['90-DAY MILESTONES']         || '';
+
+  // Weeks — blocks starting with "WEEK N:"
+  const weekBlocks = splitRepeating(weeklyTxt, /^week\s*\d+\s*:/i);
+  const parsedWeeks = weekBlocks.map(wb => {
+    const numMatch = /^week\s*(\d+)\s*:/i.exec(wb.header);
+    const num = numMatch ? parseInt(numMatch[1], 10) : null;
+    const title = wb.header.replace(/^week\s*\d+\s*:\s*/i, '').trim();
+    const focus = extractField(wb.content, 'FOCUS');
+    const postsBlock = extractField(wb.content, 'POSTS');
+    return { num, title, focus, posts: postsBlock };
+  }).filter(w => w.num);
+
+  const weeksTable = parsedWeeks.length
+    ? `<div style="overflow-x:auto;">
+        <table class="week-strat-table">
+          <thead><tr><td>Week</td><td>Theme</td><td>Posts</td></tr></thead>
+          <tbody>
+            ${parsedWeeks.map(w => `<tr>
+              <td class="wst-num">${w.num}</td>
+              <td><div class="wst-theme">${escHtml(w.title)}</div>${w.focus ? `<div class="wst-focus">${escHtml(w.focus)}</div>` : ''}</td>
+              <td>${fmtText(w.posts)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`
+    : (weeklyTxt ? `<div class="strat-card"><span class="strat-card-label">Weekly Themes</span><div class="strat-card-body">${fmtText(weeklyTxt)}</div></div>` : '');
+
+  // Pillars inside CONTENT PILLARS block: PILLAR 1: Name — description
+  let pillarLines = '';
+  if (pillars) {
+    const pb = pillars.split('\n').map(l => l.trim()).filter(Boolean);
+    const items = pb.map(line => {
+      const m = /^pillar\s*\d+\s*:\s*(.+)$/i.exec(line);
+      return m ? m[1] : null;
+    }).filter(Boolean);
+    if (items.length) {
+      pillarLines = `<div class="strat-card"><span class="strat-card-label">Content Pillars</span><div class="strat-card-body">${items.map(i => `<div style="margin-bottom:6px;">• ${fmtText(i)}</div>`).join('')}</div></div>`;
+    } else {
+      pillarLines = `<div class="strat-card"><span class="strat-card-label">Content Pillars</span><div class="strat-card-body">${fmtText(pillars)}</div></div>`;
+    }
+  }
+
+  // Platform strategy — FACEBOOK / INSTAGRAM / GOOGLE BUSINESS fields
+  let platformBlock = '';
+  if (platform) {
+    const fb = extractField(platform, 'FACEBOOK');
+    const ig = extractField(platform, 'INSTAGRAM');
+    const gb = extractField(platform, 'GOOGLE BUSINESS');
+    if (fb || ig || gb) {
+      platformBlock = `<div class="strat-card"><span class="strat-card-label">Platform Strategy</span><div class="strat-card-body">
+        ${fb ? `<div style="margin-bottom:10px;"><strong>Facebook:</strong> ${fmtText(fb)}</div>` : ''}
+        ${ig ? `<div style="margin-bottom:10px;"><strong>Instagram:</strong> ${fmtText(ig)}</div>` : ''}
+        ${gb ? `<div><strong>Google Business:</strong> ${fmtText(gb)}</div>` : ''}
+      </div></div>`;
+    } else {
+      platformBlock = `<div class="strat-card"><span class="strat-card-label">Platform Strategy</span><div class="strat-card-body">${fmtText(platform)}</div></div>`;
+    }
+  }
+
+  const overviewBlock = overview
+    ? `<div class="strat-highlight"><span class="strat-highlight-label">Strategy Overview</span><div class="strat-highlight-text">${fmtText(overview)}</div></div>`
+    : '';
+  const reviewBlock = reviewStr
+    ? `<div class="strat-card"><span class="strat-card-label">Review Generation</span><div class="strat-card-body">${fmtText(reviewStr)}</div></div>`
+    : '';
+  const milestoneBlock = milestones
+    ? `<div class="strat-card"><span class="strat-card-label">90-Day Milestones</span><div class="strat-card-body">${fmtText(milestones)}</div></div>`
+    : '';
+
+  // Week 1 daily posts — appended as a sub-section if present
+  let week1Block = '';
+  if (week1Raw) {
+    const dayBlocks = splitRepeating(week1Raw, /^day\s*\d+\s*(—|-|–|\|)/i);
+    if (dayBlocks.length) {
+      week1Block = `<div class="strat-card"><span class="strat-card-label">Week 1 Content Calendar</span><div class="strat-card-body">
+        ${dayBlocks.map(db => {
+          const label = db.header.trim();
+          const postType = extractField(db.content, 'POST TYPE');
+          const visual   = extractField(db.content, 'VISUAL DIRECTION');
+          const caption  = extractField(db.content, 'CAPTION');
+          const hashtags = extractField(db.content, 'HASHTAGS');
+          const best     = extractField(db.content, 'BEST TIME');
+          return `<div class="strat-subcard">
+            <div class="strat-subcard-label">${escHtml(label)}${postType ? ' <span class="strat-subcard-dim">· ' + escHtml(postType) + '</span>' : ''}</div>
+            <div class="strat-subcard-body">
+              ${caption  ? `<div style="margin-bottom:8px;">${fmtText(caption)}</div>` : ''}
+              ${visual   ? `<div style="margin-bottom:6px;font-size:13px;color:var(--muted);"><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;">Visual:</span> ${fmtText(visual)}</div>` : ''}
+              ${hashtags ? `<div style="margin-bottom:4px;font-size:12px;color:var(--pink);">${escHtml(hashtags)}</div>` : ''}
+              ${best     ? `<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;">Best time: ${escHtml(best)}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div></div>`;
+    } else {
+      week1Block = `<div class="strat-card"><span class="strat-card-label">Week 1 Content Calendar</span><div class="strat-card-body">${fmtText(week1Raw)}</div></div>`;
+    }
+  }
+
+  // If roadmap gave us nothing usable at all, and week1 is all we have, fall back to raw
+  if (!overview && !pillarLines && !platformBlock && !weeksTable && !reviewBlock && !milestoneBlock && raw) {
+    return wrap(renderRawFallback(raw) + week1Block);
+  }
+
+  return wrap(`${overviewBlock}${pillarLines}${platformBlock}${weeksTable}${reviewBlock}${milestoneBlock}${week1Block}`);
 }
 
 function toggleScript(hd) {
