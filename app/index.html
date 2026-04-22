@@ -885,6 +885,8 @@ function persistAuthSession(data) {
 function routeAfterAuth(data) {
   if (data.state === 'dashboard' || data.role === 'admin') location.href = 'dashboard.html';
   else                                                     location.href = 'launch.html';
+  // Note: 'strategy-under-review' falls through to launch.html, which renders
+  // the screen-strategy-review waiting screen via its resumeIfLoggedIn IIFE.
 }
 
 // ESC key closes the modal

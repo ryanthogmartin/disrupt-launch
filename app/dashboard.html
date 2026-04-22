@@ -207,6 +207,47 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .client-day{font-family:var(--font-display);font-size:28px;color:var(--text2);line-height:1;text-align:center;min-width:60px;}
 .client-day-label{font-family:var(--font-mono);font-size:8px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;}
 .client-view-btn{padding:8px 16px;border-radius:6px;border:1px solid var(--pink);background:transparent;color:var(--pink);font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
+
+/* Guided Review Queue */
+.section-sub{font-family:var(--font-mono);font-size:9px;color:var(--faint);letter-spacing:1.5px;text-transform:none;margin-left:8px;}
+.review-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;}
+.review-row{background:#FFFBEA;border:1px solid #F3CE24;border-radius:var(--radius);padding:18px 22px;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:20px;box-shadow:var(--card-shadow);transition:border-color .15s;}
+.review-row:hover{border-color:#D4AF00;}
+.review-ts{min-width:160px;text-align:right;}
+.review-ts-label{font-family:var(--font-mono);font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.review-ts-val{font-family:var(--font-mono);font-size:12px;color:#8B6F00;}
+.review-open-btn{padding:10px 20px;border-radius:6px;border:1px solid var(--pink);background:var(--pink);color:#fff;font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;transition:all .15s;white-space:nowrap;font-weight:700;}
+.review-open-btn:hover{background:var(--pink-dk);}
+
+/* Strategy Review Modal — full-screen style, dark overlay with large content area */
+.review-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:flex;align-items:stretch;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;padding:24px;}
+.review-modal-overlay.open{opacity:1;pointer-events:all;}
+.review-modal{background:var(--bg);border:1px solid var(--border);border-radius:12px;width:100%;max-width:980px;max-height:100%;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);transform:translateY(8px);transition:transform .2s;overflow:hidden;}
+.review-modal-overlay.open .review-modal{transform:translateY(0);}
+.review-modal-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--bg2);}
+.review-modal-title{font-family:var(--font-display);font-size:22px;color:var(--text);margin:0;}
+.review-modal-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.review-modal-close{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:6px 14px;font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;border-radius:4px;cursor:pointer;transition:all .15s;}
+.review-modal-close:hover{color:var(--text);border-color:var(--text);}
+.review-modal-body{padding:20px 28px;overflow-y:auto;flex:1;}
+.review-module{margin-bottom:24px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);overflow:hidden;}
+.review-module-hdr{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:var(--surface);}
+.review-module-title{font-family:var(--font-display);font-size:15px;color:var(--text);margin:0;}
+.review-module-status{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.review-module-status.saved{color:var(--green);}
+.review-module-status.dirty{color:#F3CE24;}
+.review-module-status.saving{color:var(--pink);}
+.review-module-textarea{width:100%;min-height:280px;padding:14px 16px;font-family:'Courier New',monospace;font-size:13px;line-height:1.6;color:var(--text);background:var(--bg);border:none;resize:vertical;box-sizing:border-box;}
+.review-module-textarea:focus{outline:2px solid var(--pink);outline-offset:-2px;}
+.review-module-actions{padding:10px 16px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);background:var(--surface);}
+.review-module-save{padding:7px 16px;border-radius:4px;border:1px solid var(--green);background:var(--green);color:#fff;font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.review-module-save:disabled{opacity:0.5;cursor:not-allowed;}
+.review-modal-footer{padding:20px 28px;border-top:1px solid var(--border);background:var(--bg2);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;flex-wrap:wrap;gap:12px;}
+.review-modal-footer-note{font-size:12px;color:var(--muted);}
+.review-release-btn{padding:14px 28px;border-radius:6px;border:1px solid var(--pink);background:var(--pink);color:#fff;font-family:var(--font-mono);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;font-weight:700;}
+.review-release-btn:hover{background:var(--pink-dk);}
+.review-release-btn:disabled{opacity:0.5;cursor:not-allowed;}
+@media(max-width:780px){.review-row{grid-template-columns:1fr;gap:12px;}.review-ts{text-align:left;}.review-modal-body{padding:14px 18px;}.review-modal-header{padding:16px 18px;}.review-modal-title{font-size:18px;}}
 .client-view-btn:hover{background:var(--pink);color:#fff;border-color:var(--pink);}
 
 /* EXECUTE TAB */
@@ -431,6 +472,26 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
     <div class="tab-panel active" id="tab-home"></div>
     <div class="tab-panel" id="tab-execute"></div>
     <div class="tab-panel" id="tab-strategy"></div>
+  </div>
+</div>
+
+<!-- STRATEGY REVIEW MODAL (admin only) -->
+<div class="review-modal-overlay" id="strategy-review-modal">
+  <div class="review-modal">
+    <div class="review-modal-header">
+      <div>
+        <div class="review-modal-title" id="srm-client-name">Loading…</div>
+        <div class="review-modal-sub" id="srm-client-meta"></div>
+      </div>
+      <button class="review-modal-close" onclick="closeStrategyReview()">✕ Close</button>
+    </div>
+    <div class="review-modal-body" id="srm-body">
+      <div style="padding:40px;text-align:center;color:var(--muted)">Loading strategy modules…</div>
+    </div>
+    <div class="review-modal-footer">
+      <div class="review-modal-footer-note">When you hit Release, the client gets an email and their dashboard unlocks. Edits are saved per module as you work.</div>
+      <button class="review-release-btn" id="srm-release-btn" onclick="releaseStrategy()">Release to Client →</button>
+    </div>
   </div>
 </div>
 
@@ -838,6 +899,33 @@ function renderAdminHome() {
     </div>`;
   }).join('');
 
+  // Guided Review Queue — Guided clients who finished intake + generation but
+  // whose strategy hasn't been released yet. These rows open the inline-edit
+  // review modal where the strategist refines copy and hits Release.
+  const guidedReview = (SESSION.allClients || []).filter(c => {
+    const a = c.intake_answers || {};
+    return a._tier === 'guided' && a._intake_complete && !a._strategy_released;
+  });
+  const guidedReviewHtml = guidedReview.map(c => {
+    const a = c.intake_answers || {};
+    const doneAt = a._generated_at ? new Date(a._generated_at) : null;
+    const doneLabel = doneAt
+      ? doneAt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + doneAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+      : '—';
+    return `<div class="review-row">
+      <div>
+        <div class="client-name">${escHtml(c.contact_name || c.name || '—')}</div>
+        <div class="client-contact">${escHtml(c.name || '')}</div>
+        <div class="client-meta">${escHtml(c.email || '')} · ${escHtml(a._mobile || '—')}</div>
+      </div>
+      <div class="review-ts">
+        <div class="review-ts-label">Intake completed</div>
+        <div class="review-ts-val">${doneLabel}</div>
+      </div>
+      <button class="review-open-btn" onclick="openStrategyReview('${c.id}')">Open Review →</button>
+    </div>`;
+  }).join('');
+
   document.getElementById('tab-home').innerHTML = `
     <div class="admin-hero">
       <div>
@@ -846,8 +934,13 @@ function renderAdminHome() {
       </div>
       <div class="admin-stat-row">
         <div class="admin-stat"><div class="admin-stat-num">${totalClients}</div><div class="admin-stat-label">Active Clients</div></div>
+        <div class="admin-stat"><div class="admin-stat-num">${guidedReview.length}</div><div class="admin-stat-label">In Review Queue</div></div>
       </div>
     </div>
+    ${guidedReview.length ? `
+      <div class="section-heading">Guided Review Queue <span class="section-sub">Intake complete — awaiting your review + release</span></div>
+      <div class="review-grid">${guidedReviewHtml}</div>
+    ` : ''}
     <div class="section-heading">Active Clients</div>
     <div class="client-grid">${clientRowsHtml || '<div class="no-wins">No clients found.</div>'}</div>`;
 }
@@ -1198,6 +1291,127 @@ function selectTheme(t) {
   document.getElementById('theme-dark').classList.toggle('selected',t==='dark');
 }
 
+// ── STRATEGY REVIEW MODAL (admin-only) ────────────────────────────────────────
+// Lets the strategist inline-edit each of the 8 generated modules and release
+// the strategy to the client. All writes hit the Worker's /admin/* endpoints
+// which verify admin JWT server-side.
+const MODULE_ORDER = ['goals','competitors','brand','personas','scripts','preneed','roadmap','week1'];
+const MODULE_LABELS = {
+  goals: 'Goals & Scorecard', competitors: 'Competitor Intel', brand: 'Brand Guidelines',
+  personas: 'Customer Personas', scripts: 'Video Scripts', preneed: 'Pre-Need Engine',
+  roadmap: '90-Day Roadmap', week1: 'Week 1 Calendar'
+};
+let SRM = { clientId: null, client: null, modules: {}, dirty: {} };
+
+function openStrategyReview(clientId) {
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(clientId));
+  if (!c) { toast('Client not found', 'error'); return; }
+  const a = c.intake_answers || {};
+  const modules = a._strategy_generated_output || {};
+  SRM = { clientId, client: c, modules: Object.assign({}, modules), dirty: {} };
+  document.getElementById('srm-client-name').textContent = c.contact_name || c.name || '(no name)';
+  document.getElementById('srm-client-meta').textContent = (c.name || '') + ' · ' + (c.email || '') + ' · Intake completed ' + (a._generated_at ? new Date(a._generated_at).toLocaleString() : '—');
+  const body = document.getElementById('srm-body');
+  body.innerHTML = MODULE_ORDER.map(key => {
+    const text = modules[key] || '';
+    return `<div class="review-module" data-key="${key}">
+      <div class="review-module-hdr">
+        <div class="review-module-title">${MODULE_LABELS[key]}</div>
+        <div class="review-module-status" id="srm-status-${key}">${text ? 'Saved' : 'No content'}</div>
+      </div>
+      <textarea class="review-module-textarea" id="srm-ta-${key}" oninput="markModuleDirty('${key}')">${escHtml(text)}</textarea>
+      <div class="review-module-actions">
+        <button class="review-module-save" id="srm-save-${key}" onclick="saveStrategyModule('${key}')" disabled>Save</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('strategy-review-modal').classList.add('open');
+}
+
+function closeStrategyReview() {
+  const dirtyKeys = Object.keys(SRM.dirty);
+  if (dirtyKeys.length && !confirm('You have unsaved edits on ' + dirtyKeys.length + ' module(s). Close anyway?')) return;
+  document.getElementById('strategy-review-modal').classList.remove('open');
+  SRM = { clientId: null, client: null, modules: {}, dirty: {} };
+}
+
+function markModuleDirty(key) {
+  SRM.dirty[key] = true;
+  const status = document.getElementById('srm-status-' + key);
+  const btn = document.getElementById('srm-save-' + key);
+  if (status) { status.textContent = 'Unsaved'; status.className = 'review-module-status dirty'; }
+  if (btn) btn.disabled = false;
+}
+
+async function saveStrategyModule(key) {
+  const ta = document.getElementById('srm-ta-' + key);
+  const status = document.getElementById('srm-status-' + key);
+  const btn = document.getElementById('srm-save-' + key);
+  if (!ta || !SRM.clientId) return;
+  const newText = ta.value;
+  if (status) { status.textContent = 'Saving…'; status.className = 'review-module-status saving'; }
+  if (btn) btn.disabled = true;
+  try {
+    const sess = JSON.parse(localStorage.getItem('disrupt_session') || 'null');
+    if (!sess || !sess.token) throw new Error('No admin session');
+    const res = await fetch(WORKER_BASE + '/admin/save-module', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: sess.token, targetClientId: SRM.clientId, moduleKey: key, newText })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || ('Save failed (' + res.status + ')'));
+    }
+    SRM.modules[key] = newText;
+    delete SRM.dirty[key];
+    if (status) { status.textContent = 'Saved'; status.className = 'review-module-status saved'; }
+    toast('Module saved', 'success');
+  } catch (e) {
+    if (status) { status.textContent = 'Save failed'; status.className = 'review-module-status dirty'; }
+    if (btn) btn.disabled = false;
+    toast(e.message || 'Save failed', 'error');
+  }
+}
+
+async function releaseStrategy() {
+  if (!SRM.clientId) return;
+  const dirtyKeys = Object.keys(SRM.dirty);
+  if (dirtyKeys.length && !confirm('You have unsaved edits on ' + dirtyKeys.length + ' module(s). Release without saving those edits?')) return;
+  if (!confirm('Release this strategy to the client? They\'ll get an email with the release notification and their dashboard will unlock. This cannot be undone from here.')) return;
+  const btn = document.getElementById('srm-release-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Releasing…'; }
+  try {
+    const sess = JSON.parse(localStorage.getItem('disrupt_session') || 'null');
+    if (!sess || !sess.token) throw new Error('No admin session');
+    const res = await fetch(WORKER_BASE + '/admin/release-strategy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: sess.token, targetClientId: SRM.clientId })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || ('Release failed (' + res.status + ')'));
+    }
+    toast('Strategy released — client notified', 'success');
+    // Update the client's local copy so the queue re-renders without the row
+    if (SRM.client && SRM.client.intake_answers) {
+      SRM.client.intake_answers._strategy_released = true;
+      SRM.client.intake_answers._strategy_released_at = new Date().toISOString();
+    }
+    closeStrategyReview();
+    renderAdminHome();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Release to Client →'; }
+    toast(e.message || 'Release failed', 'error');
+  }
+}
+
+// ESC closes the review modal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('strategy-review-modal').classList.contains('open')) closeStrategyReview();
+});
+
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
   const nxt = cur==='dark'?'light':'dark';
@@ -1212,6 +1426,11 @@ function showLoading(msg='Loading...') {
   document.getElementById('loading-overlay').classList.remove('hidden');
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); }
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 let toastTimer;
 function toast(msg, type='info') {
   const el = document.getElementById('toast');
