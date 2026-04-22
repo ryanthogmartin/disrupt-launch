@@ -7,7 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase CDN removed: browser no longer talks to Supabase directly.
+     All DB reads/writes go through the Cloudflare Worker (JWT-authenticated). -->
+
 <style>
 [data-theme="light"]{
   --bg:#F7F7F4;--bg2:#FFFFFF;--surface:#F0F0EC;--surface2:#E8E8E3;--border:#E0E0D8;--border2:#CDCDC5;
@@ -534,9 +536,31 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 </div>
 
 <script>
-// ── SUPABASE ─────────────────────────────────────────────────────────────────
-const { createClient } = supabase;
-const db = createClient('https://hreahmwfzmuhgkkhrbdq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWFobXdmem11aGdra2hyYmRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjU4NTcsImV4cCI6MjA5MjEwMTg1N30.kj070MgNzTQYlQ0_0XDFYNkO9_MhNWzr16GlzqSc10Q');
+// ── DATA ACCESS ──────────────────────────────────────────────────────────────
+// All data operations route through the Cloudflare Worker. The browser has no
+// direct Supabase access — RLS is enabled on every table and the anon key is
+// inert. The Worker uses the service-role key server-side and verifies our
+// JWT on every request.
+async function apiPost(path, body) {
+  const res = await fetch(WORKER_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || ('Request failed: ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+function sessionToken() {
+  try {
+    const s = JSON.parse(localStorage.getItem('disrupt_session') || sessionStorage.getItem('disrupt_session') || 'null');
+    return s && s.token;
+  } catch(e) { return null; }
+}
 
 // ── SESSION ──────────────────────────────────────────────────────────────────
 let SESSION = {
@@ -595,8 +619,13 @@ async function handleLogin() {
       err.style.display = 'block';
       return;
     }
-    // Pull the full client record from Supabase (for metrics, week_progress, etc.)
-    const { data: client } = await db.from('clients').select('*').eq('id', data.clientId).single();
+    // Worker now returns the full public client record alongside the JWT —
+    // no second Supabase round-trip needed.
+    const client = data.client || {
+      id: data.clientId, email: data.email, contact_name: data.contactName,
+      name: data.businessName, role: data.role, start_date: null, theme: 'light',
+      intake_answers: {},
+    };
     SESSION.clientId = client.id;
     SESSION.clientData = client;
     SESSION.role = client.role;
@@ -620,7 +649,13 @@ async function handleSetupDate() {
   const d = document.getElementById('setup-date').value;
   if (!d) { toast('Pick a start date first.', 'error'); return; }
   showLoading('Setting up your dashboard...');
-  await db.from('clients').update({ start_date: d }).eq('id', SESSION.clientId);
+  try {
+    await apiPost('/dashboard/save-settings', { token: sessionToken(), startDate: d });
+  } catch (e) {
+    hideLoading();
+    toast(e.message || 'Could not save start date', 'error');
+    return;
+  }
   SESSION.clientData.start_date = d;
   await loadDashboardData();
   hideLoading();
@@ -640,33 +675,38 @@ async function handleLogout() {
 // ── DATA LOADING ─────────────────────────────────────────────────────────────
 async function loadDashboardData() {
   const cid = SESSION.viewingClientId || SESSION.clientId;
-  const [{ data: wpData }, { data: mData }, { data: nData }] = await Promise.all([
-    db.from('week_progress').select('*').eq('client_id', cid),
-    db.from('metrics').select('*').eq('client_id', cid).single(),
-    db.from('team_notes').select('*').eq('client_id', cid)
-  ]);
+  const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
+  const body = { token: sessionToken() };
+  if (passTarget) body.targetClientId = cid;
+  const data = await apiPost('/dashboard/data', body);
   SESSION.weekProgress = {};
-  (wpData || []).forEach(w => { SESSION.weekProgress[w.week_num] = { tasks: w.tasks || [0,0,0,0], wins: w.wins || '' }; });
-  SESSION.metrics = mData || { cases:0, reviews:85, preneed:0, reach:0 };
+  (data.weekProgress || []).forEach(w => { SESSION.weekProgress[w.week_num] = { tasks: w.tasks || [0,0,0,0], wins: w.wins || '' }; });
+  SESSION.metrics = data.metrics || { cases:0, reviews:85, preneed:0, reach:0 };
   SESSION.teamNotes = {};
-  (nData || []).forEach(n => { SESSION.teamNotes[n.week_num] = n.note || ''; });
+  (data.teamNotes || []).forEach(n => { SESSION.teamNotes[n.week_num] = n.note || ''; });
   if (SESSION.role === 'admin' && !SESSION.viewingClientId) {
-    const { data: clients } = await db.from('clients').select('*, metrics(*), week_progress(*)').eq('role','client').order('created_at', { ascending:false });
-    SESSION.allClients = clients || [];
+    const adminList = await apiPost('/admin/list-clients', { token: sessionToken() });
+    SESSION.allClients = adminList.clients || [];
   }
 }
 
 async function saveWeekProgress(weekNum) {
   const cid = SESSION.viewingClientId || SESSION.clientId;
   const wd = SESSION.weekProgress[weekNum] || { tasks:[0,0,0,0], wins:'' };
-  await db.from('week_progress').upsert({ client_id:cid, week_num:weekNum, tasks:wd.tasks, wins:wd.wins, updated_at:new Date().toISOString() }, { onConflict:'client_id,week_num' });
-};
+  const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
+  const body = { token: sessionToken(), weekNum, tasks: wd.tasks, wins: wd.wins };
+  if (passTarget) body.targetClientId = cid;
+  await apiPost('/dashboard/save-week', body);
+}
 
 async function saveMetrics() {
   const cid = SESSION.viewingClientId || SESSION.clientId;
   const m = SESSION.metrics;
-  await db.from('metrics').upsert({ client_id:cid, cases:m.cases||0, reviews:m.reviews||0, preneed:m.preneed||0, reach:m.reach||0, updated_at:new Date().toISOString() }, { onConflict:'client_id' });
-};
+  const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
+  const body = { token: sessionToken(), cases: m.cases||0, reviews: m.reviews||0, preneed: m.preneed||0, reach: m.reach||0 };
+  if (passTarget) body.targetClientId = cid;
+  await apiPost('/dashboard/save-metrics', body);
+}
 
 // ── ADMIN VIEW ───────────────────────────────────────────────────────────────
 async function viewClient(clientId) {
@@ -1966,7 +2006,13 @@ async function saveSettings() {
   const d = document.getElementById('settings-date').value;
   const th = document.documentElement.getAttribute('data-theme');
   showLoading('Saving...');
-  await db.from('clients').update({ start_date:d||null, theme:th }).eq('id', SESSION.clientId);
+  try {
+    await apiPost('/dashboard/save-settings', { token: sessionToken(), startDate: d || '', theme: th });
+  } catch (e) {
+    hideLoading();
+    toast(e.message || 'Could not save settings', 'error');
+    return;
+  }
   SESSION.clientData.start_date = d;
   SESSION.clientData.theme = th;
   hideLoading();
@@ -2107,7 +2153,8 @@ function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
   const nxt = cur==='dark'?'light':'dark';
   selectTheme(nxt);
-  db.from('clients').update({theme:nxt}).eq('id', SESSION.clientId);
+  // Fire-and-forget — if the network drops, the UI has still updated locally.
+  apiPost('/dashboard/save-theme', { token: sessionToken(), theme: nxt }).catch(e => console.warn('theme save failed:', e.message));
   SESSION.clientData.theme = nxt;
 }
 
@@ -2137,15 +2184,24 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (async function init() {
-  const saved = sessionStorage.getItem('disrupt_session');
-  if(saved) {
+  // Prefer localStorage (set by the landing-page login modal) so that logging
+  // in on index.html carries the session into dashboard.html. Fall back to
+  // sessionStorage for legacy sessions.
+  let saved = null;
+  try { saved = localStorage.getItem('disrupt_session') || sessionStorage.getItem('disrupt_session'); } catch(e) {}
+  if (saved) {
     try {
-      const { id } = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      const token = parsed.token;
+      if (!token) { hideLoading(); return; }
       showLoading('Restoring session...');
-      const { data:client, error } = await db.from('clients').select('*').eq('id',id).single();
-      if(client && !error) {
-        SESSION.clientId = client.id; SESSION.clientData = client; SESSION.role = client.role;
-        if(!client.start_date && client.role!=='admin') {
+      const data = await apiPost('/auth/resume', { token }).catch(e => ({ ok: false, error: e.message }));
+      const client = data && data.ok && data.client;
+      if (client) {
+        SESSION.clientId = client.id;
+        SESSION.clientData = client;
+        SESSION.role = client.role;
+        if (!client.start_date && client.role !== 'admin') {
           hideLoading();
           document.getElementById('screen-login').classList.remove('active');
           document.getElementById('screen-setup').classList.add('active');
@@ -2157,6 +2213,8 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
         launchApp();
         return;
       }
+      // Session invalid — clear it silently and fall through to login screen.
+      try { localStorage.removeItem('disrupt_session'); sessionStorage.removeItem('disrupt_session'); } catch(e) {}
     } catch(e) {}
   }
   hideLoading();
