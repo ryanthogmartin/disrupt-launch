@@ -1003,7 +1003,9 @@ async function submitAccount() {
     }
     data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      if (res.status === 409) {
+      if (res.status === 409 && data.reason === 'needs_setup') {
+        submitErr.innerHTML = 'An account was already created when you paid. Check your inbox for the setup link from <strong>launch@disruptmedia.co</strong> — it works for 30 days.';
+      } else if (res.status === 409) {
         submitErr.innerHTML = 'That email already has an account. <a href="#" onclick="openLoginModal(); return false;" style="color:var(--pink);font-weight:600;">Log in instead →</a>';
       } else {
         submitErr.textContent = data.error || ('Signup failed (' + res.status + ')');
