@@ -844,6 +844,47 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
 // the redirect.
 (async function resumeIfLoggedIn(){
   var params = new URLSearchParams(location.search);
+
+  // Stripe-auto-provisioned buyer: exchange the magic-link JWT for a session,
+  // then clean magic+tier from the URL and fall through to the normal resume
+  // flow — which will route them to intake / review / dashboard based on state.
+  var magicToken = params.get('magic');
+  if (magicToken) {
+    var modeEl = document.getElementById('screen-mode');
+    if (modeEl) modeEl.classList.remove('active');
+    try {
+      var mres = await fetch(WORKER_BASE + '/auth/magic-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: magicToken })
+      });
+      var mdata = await mres.json().catch(function(){ return {}; });
+      if (mres.ok && mdata.token) {
+        saveSession({
+          token: mdata.token,
+          clientId: mdata.clientId,
+          email: mdata.email,
+          contactName: mdata.contactName,
+          businessName: mdata.businessName,
+          tier: mdata.tier
+        });
+        // Strip magic AND tier so a refresh doesn't re-exchange a spent URL.
+        history.replaceState({}, '', '/launch.html');
+        params = new URLSearchParams('');
+      } else {
+        history.replaceState({}, '', '/launch.html');
+        alert(mdata.error || 'This login link is invalid or expired. Please contact support@disruptmedia.co.');
+        if (modeEl) modeEl.classList.add('active');
+        return;
+      }
+    } catch(e) {
+      console.warn('magic-login failed:', e);
+      history.replaceState({}, '', '/launch.html');
+      if (modeEl) modeEl.classList.add('active');
+      return;
+    }
+  }
+
   if (params.get('tier') || params.get('demo') === 'true' || params.get('tour') === 'true') return;
   var s = loadSession();
   if (!s || !s.token) return;
