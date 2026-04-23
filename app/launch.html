@@ -423,6 +423,12 @@ textarea { resize: vertical; min-height: 96px; }
     </div>
 
     <div class="q-block" style="margin-bottom:20px;">
+      <label class="q-label" for="acct-job-title">Your Job Title <span class="key-badge">Required</span></label>
+      <input type="text" id="acct-job-title" placeholder="Owner · Funeral Director · Marketing Director" autocomplete="organization-title">
+      <div class="err-msg" id="acct-job-title-err" style="display:none;">Please enter your job title.</div>
+    </div>
+
+    <div class="q-block" style="margin-bottom:20px;">
       <label class="q-label" for="acct-business">Funeral Home Name <span class="key-badge">Required</span></label>
       <input type="text" id="acct-business" placeholder="Huff-Guthrie Funeral Home & Cremation Services" autocomplete="organization">
       <div class="err-msg" id="acct-business-err" style="display:none;">Please enter your funeral home name.</div>
@@ -842,49 +848,59 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
 // section they left off, answers pre-loaded. We hide `screen-mode` up front
 // so the returning user never sees the "pick your path" screen flash before
 // the redirect.
-(async function resumeIfLoggedIn(){
+// Stripe buyer arriving via `?setup=TOKEN` — resolve the placeholder email,
+// drop them on the account-setup screen with email pre-filled + locked. They
+// still set their own password. Handled as its own IIFE (not tied to resume).
+(async function resolveSetupToken(){
   var params = new URLSearchParams(location.search);
-
-  // Stripe-auto-provisioned buyer: exchange the magic-link JWT for a session,
-  // then clean magic+tier from the URL and fall through to the normal resume
-  // flow — which will route them to intake / review / dashboard based on state.
-  var magicToken = params.get('magic');
-  if (magicToken) {
-    var modeEl = document.getElementById('screen-mode');
-    if (modeEl) modeEl.classList.remove('active');
-    try {
-      var mres = await fetch(WORKER_BASE + '/auth/magic-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: magicToken })
-      });
-      var mdata = await mres.json().catch(function(){ return {}; });
-      if (mres.ok && mdata.token) {
-        saveSession({
-          token: mdata.token,
-          clientId: mdata.clientId,
-          email: mdata.email,
-          contactName: mdata.contactName,
-          businessName: mdata.businessName,
-          tier: mdata.tier
-        });
-        // Strip magic AND tier so a refresh doesn't re-exchange a spent URL.
-        history.replaceState({}, '', '/launch.html');
-        params = new URLSearchParams('');
-      } else {
-        history.replaceState({}, '', '/launch.html');
-        alert(mdata.error || 'This login link is invalid or expired. Please contact support@disruptmedia.co.');
-        if (modeEl) modeEl.classList.add('active');
-        return;
-      }
-    } catch(e) {
-      console.warn('magic-login failed:', e);
+  var setupToken = params.get('setup');
+  if (!setupToken) return;
+  var modeEl = document.getElementById('screen-mode');
+  var welcomeEl = document.getElementById('screen-welcome');
+  if (modeEl) modeEl.classList.remove('active');
+  if (welcomeEl) welcomeEl.classList.remove('active');
+  try {
+    var sres = await fetch(WORKER_BASE + '/auth/resolve-setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: setupToken })
+    });
+    var sdata = await sres.json().catch(function(){ return {}; });
+    if (!sres.ok || !sdata.email) {
+      alert(sdata.error || 'This setup link is invalid or expired. Please contact support@disruptmedia.co.');
       history.replaceState({}, '', '/launch.html');
       if (modeEl) modeEl.classList.add('active');
       return;
     }
+    if (sdata.alreadyCompleted) {
+      alert('This account is already set up. Please log in with your password.');
+      location.replace('/'); // login page
+      return;
+    }
+    window.__SETUP_CONTEXT = { token: setupToken, tier: sdata.tier || 'self', email: sdata.email };
+    // Jump straight to the account screen — skip the welcome "mode" picker.
+    document.getElementById('screen-account').classList.add('active');
+    document.getElementById('topbar-right').textContent = 'Step 1 of 6 · ' + (sdata.tier === 'guided' ? 'Guided' : 'Self-Guided');
+    var emailInput = document.getElementById('acct-email');
+    if (emailInput) {
+      emailInput.value = sdata.email;
+      emailInput.readOnly = true;
+      emailInput.style.opacity = '0.7';
+      emailInput.style.cursor = 'not-allowed';
+    }
+    var acctSub = document.getElementById('acct-sub');
+    if (acctSub) acctSub.textContent = 'Paid email on file: ' + sdata.email + ' — finish setup below and start your intake.';
+  } catch(e) {
+    console.warn('resolve-setup failed:', e);
+    history.replaceState({}, '', '/launch.html');
+    if (modeEl) modeEl.classList.add('active');
   }
+})();
 
+(async function resumeIfLoggedIn(){
+  var params = new URLSearchParams(location.search);
+  // If a setup token is present, the resolveSetupToken IIFE above owns the UI.
+  if (params.get('setup')) return;
   if (params.get('tier') || params.get('demo') === 'true' || params.get('tour') === 'true') return;
   var s = loadSession();
   if (!s || !s.token) return;
@@ -935,6 +951,7 @@ async function submitAccount() {
   const name     = document.getElementById('acct-name').value.trim();
   const email    = document.getElementById('acct-email').value.trim();
   const mobile   = document.getElementById('acct-mobile').value.trim();
+  const jobTitle = document.getElementById('acct-job-title').value.trim();
   const business = document.getElementById('acct-business').value.trim();
   const password = document.getElementById('acct-password').value;
   const password2= document.getElementById('acct-password2').value;
@@ -942,10 +959,10 @@ async function submitAccount() {
   const btn = document.getElementById('acct-submit-btn');
   let valid = true;
 
-  ['acct-name-err','acct-email-err','acct-mobile-err','acct-business-err','acct-password-err','acct-password2-err'].forEach(id => {
+  ['acct-name-err','acct-email-err','acct-mobile-err','acct-job-title-err','acct-business-err','acct-password-err','acct-password2-err'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
-  ['acct-name','acct-email','acct-mobile','acct-business','acct-password','acct-password2'].forEach(id => {
+  ['acct-name','acct-email','acct-mobile','acct-job-title','acct-business','acct-password','acct-password2'].forEach(id => {
     document.getElementById(id).parentElement.classList.remove('has-error');
   });
   submitErr.textContent = '';
@@ -953,6 +970,7 @@ async function submitAccount() {
   if (!name)     { document.getElementById('acct-name-err').style.display='block';    document.getElementById('acct-name').parentElement.classList.add('has-error');     valid=false; }
   if (!email || !email.includes('@')) { document.getElementById('acct-email-err').style.display='block';   document.getElementById('acct-email').parentElement.classList.add('has-error');    valid=false; }
   if (!mobile)   { document.getElementById('acct-mobile-err').style.display='block';  document.getElementById('acct-mobile').parentElement.classList.add('has-error');   valid=false; }
+  if (!jobTitle) { document.getElementById('acct-job-title-err').style.display='block'; document.getElementById('acct-job-title').parentElement.classList.add('has-error'); valid=false; }
   if (!business) { document.getElementById('acct-business-err').style.display='block';document.getElementById('acct-business').parentElement.classList.add('has-error'); valid=false; }
   if (!password || password.length < 8) { document.getElementById('acct-password-err').style.display='block';   document.getElementById('acct-password').parentElement.classList.add('has-error');   valid=false; }
   if (password !== password2) { document.getElementById('acct-password2-err').style.display='block'; document.getElementById('acct-password2').parentElement.classList.add('has-error'); valid=false; }
@@ -963,15 +981,27 @@ async function submitAccount() {
   btn.disabled = true;
   btn.textContent = 'Creating account…';
 
-  const tier = (window.__tierFromStripe || 'self');
+  const setupCtx = window.__SETUP_CONTEXT;
+  const tier = setupCtx ? setupCtx.tier : (window.__tierFromStripe || 'self');
 
   try {
-    const res = await fetch(WORKER_BASE + '/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, contactName: name, businessName: business, mobile, tier })
-    });
-    const data = await res.json().catch(() => ({}));
+    let res, data;
+    if (setupCtx && setupCtx.token) {
+      // Stripe-provisioned buyer completing placeholder account
+      res = await fetch(WORKER_BASE + '/auth/complete-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: setupCtx.token, contactName: name, businessName: business, mobile, jobTitle, password })
+      });
+    } else {
+      // Direct signup (non-Stripe path — kept for legacy / staff accounts)
+      res = await fetch(WORKER_BASE + '/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, contactName: name, businessName: business, mobile, jobTitle, tier })
+      });
+    }
+    data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (res.status === 409) {
         submitErr.innerHTML = 'That email already has an account. <a href="#" onclick="openLoginModal(); return false;" style="color:var(--pink);font-weight:600;">Log in instead →</a>';
@@ -982,16 +1012,19 @@ async function submitAccount() {
       btn.textContent = originalLabel;
       return;
     }
+    // Strip the setup token from the URL so a refresh doesn't re-fire resolve
+    if (setupCtx) { history.replaceState({}, '', '/launch.html'); window.__SETUP_CONTEXT = null; }
 
     // Persist session locally so page refreshes + intake saves stay authenticated
     saveSession({ token: data.token, clientId: data.clientId, email: data.email, contactName: data.contactName, businessName: data.businessName, tier: data.tier });
 
     // Seed the answers object with the account info so the questionnaire can pre-fill
-    answers['_acct_name']     = name;
-    answers['_acct_email']    = email;
-    answers['_acct_mobile']   = mobile;
-    answers['_acct_business'] = business;
-    answers['q1_1']           = business;
+    answers['_acct_name']      = name;
+    answers['_acct_email']     = data.email || email;
+    answers['_acct_mobile']    = mobile;
+    answers['_acct_job_title'] = jobTitle;
+    answers['_acct_business']  = business;
+    answers['q1_1']            = business;
     persistAnswers();
 
     // Pre-fill dashboard setup modal values
