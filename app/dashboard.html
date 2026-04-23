@@ -196,6 +196,62 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .admin-stat-num{font-family:var(--font-display);font-size:32px;color:var(--yellow);line-height:1;}
 .admin-stat-label{font-family:var(--font-mono);font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
 .client-grid{display:flex;flex-direction:column;gap:10px;}
+
+/* Admin Data dashboard */
+.data-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.data-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px 22px;box-shadow:var(--card-shadow);position:relative;overflow:hidden;}
+.data-kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);}
+.data-kpi.pink::before{background:var(--pink);}
+.data-kpi.yellow::before{background:var(--yellow);}
+.data-kpi.blue::before{background:#4A9EDB;}
+.data-kpi-label{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:14px;}
+.data-kpi-num{font-family:var(--font-display);font-size:40px;color:var(--text);line-height:1;margin-bottom:6px;}
+.data-kpi-sub{font-size:11px;color:var(--muted);}
+.data-note{font-size:12px;color:var(--muted);line-height:1.55;margin-top:18px;padding:14px 18px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--border);}
+@media(max-width:720px){
+  .data-kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .data-kpi-num{font-size:32px;}
+}
+@media(max-width:440px){
+  .data-kpi-grid{grid-template-columns:1fr;}
+}
+
+/* Monthly Revenue (client Execute tab) */
+.revenue-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-top:20px;box-shadow:var(--card-shadow);}
+.revenue-card-head{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+.revenue-input-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;}
+.revenue-field{display:flex;flex-direction:column;gap:6px;}
+.revenue-field-label{font-size:11px;color:var(--muted);letter-spacing:0.5px;}
+.revenue-field input{font-family:var(--font-body);font-size:15px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);min-width:140px;}
+.revenue-field input:focus{outline:none;border-color:var(--pink);}
+.revenue-save-btn{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:var(--pink);color:#fff;border:none;border-radius:6px;padding:11px 20px;cursor:pointer;font-weight:700;}
+.revenue-save-btn:hover{background:#E00059;}
+.revenue-save-btn:disabled{background:var(--border);cursor:not-allowed;}
+.revenue-history{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
+.revenue-history-head{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.revenue-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px;color:var(--text);border-bottom:1px dashed var(--border);}
+.revenue-row:last-child{border-bottom:none;}
+.revenue-row-month{color:var(--muted);font-family:var(--font-mono);font-size:12px;letter-spacing:0.5px;text-transform:uppercase;}
+.revenue-row-amt{font-weight:600;}
+
+/* Delete client button + modal */
+.client-delete-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#B00020;border:1px solid #B00020;border-radius:5px;padding:6px 10px;cursor:pointer;margin-left:8px;}
+.client-delete-btn:hover{background:#B00020;color:#fff;}
+.delete-modal{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+.delete-modal.open{display:flex;}
+.delete-modal-box{background:var(--bg2);border:2px solid #B00020;border-radius:10px;max-width:520px;width:100%;padding:28px 32px;box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.delete-modal-title{font-family:var(--font-display);font-size:20px;color:#B00020;margin-bottom:4px;}
+.delete-modal-sub{font-size:13px;color:var(--muted);margin-bottom:18px;}
+.delete-modal-body{font-size:14px;line-height:1.6;color:var(--text);}
+.delete-modal-body strong{color:#B00020;}
+.delete-modal-field{margin:16px 0;}
+.delete-modal-field label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.delete-modal-field input{width:100%;font-family:var(--font-body);font-size:15px;padding:11px 13px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);}
+.delete-modal-field input:focus{outline:none;border-color:#B00020;}
+.delete-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}
+.delete-modal-cancel{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:11px 18px;cursor:pointer;}
+.delete-modal-confirm{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:#B00020;color:#fff;border:none;border-radius:6px;padding:11px 20px;cursor:pointer;font-weight:700;}
+.delete-modal-confirm:disabled{background:#888;cursor:not-allowed;}
 .client-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:20px;box-shadow:var(--card-shadow);transition:border-color .15s;}
 .client-row:hover{border-color:var(--border2);}
 .client-name{font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:3px;}
@@ -468,9 +524,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
     <div class="topbar-divider"></div>
     <div class="topbar-client" id="topbar-client">Dashboard</div>
     <div class="topbar-nav">
-      <button class="tab-btn active" onclick="showTab('home',this)">Home</button>
-      <button class="tab-btn" onclick="showTab('execute',this)">Execute</button>
-      <button class="tab-btn" onclick="showTab('strategy',this)">Strategy</button>
+      <button class="tab-btn active" id="tab-btn-home" onclick="showTab('home',this)">Home</button>
+      <button class="tab-btn admin-only" id="tab-btn-data" onclick="showTab('data',this)" style="display:none">Data</button>
+      <button class="tab-btn" id="tab-btn-execute" onclick="showTab('execute',this)">Execute</button>
+      <button class="tab-btn" id="tab-btn-strategy" onclick="showTab('strategy',this)">Strategy</button>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" onclick="openSettings()" title="Settings">⚙</button>
@@ -486,6 +543,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
       </div>
     </div>
     <div class="tab-panel active" id="tab-home"></div>
+    <div class="tab-panel" id="tab-data"></div>
     <div class="tab-panel" id="tab-execute"></div>
     <div class="tab-panel" id="tab-strategy"></div>
   </div>
@@ -507,6 +565,30 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
     <div class="review-modal-footer">
       <div class="review-modal-footer-note">When you hit Release, the client gets an email and their dashboard unlocks. Edits are saved per module as you work.</div>
       <button class="review-release-btn" id="srm-release-btn" onclick="releaseStrategy()">Release to Client →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CLIENT MODAL (admin, fail-safe) -->
+<div class="delete-modal" id="delete-modal">
+  <div class="delete-modal-box">
+    <div class="delete-modal-title">Delete client — permanent</div>
+    <div class="delete-modal-sub">This action cannot be undone. All of this client's data will be removed: intake answers, generated strategy, weekly progress, metrics, and monthly revenue entries.</div>
+    <div class="delete-modal-body">
+      You are about to delete: <strong id="delmod-name">—</strong>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="delmod-contact">—</div>
+      <div class="delete-modal-field">
+        <label>Type the business name to confirm</label>
+        <input type="text" id="delmod-confirm-name" autocomplete="off" oninput="checkDeleteReady()" placeholder="Exact business name as shown above">
+      </div>
+      <div class="delete-modal-field">
+        <label>Re-enter your admin password</label>
+        <input type="password" id="delmod-password" autocomplete="current-password" oninput="checkDeleteReady()" placeholder="Your current password">
+      </div>
+    </div>
+    <div class="delete-modal-actions">
+      <button class="delete-modal-cancel" onclick="closeDeleteClient()">Cancel</button>
+      <button class="delete-modal-confirm" id="delmod-confirm-btn" onclick="submitDeleteClient()" disabled>DELETE PERMANENTLY</button>
     </div>
   </div>
 </div>
@@ -751,6 +833,7 @@ function launchApp() {
 
 // ── RENDER ALL ───────────────────────────────────────────────────────────────
 function renderAll() {
+  applyNavVisibility();
   if (SESSION.role === 'admin' && !SESSION.viewingClientId) {
     renderAdminHome();
   } else {
@@ -949,7 +1032,10 @@ function renderAdminHome() {
         <div class="client-day">${day}</div>
         <div class="client-day-label">of 90 days</div>
       </div>
-      <button class="client-view-btn" onclick="viewClient('${c.id}')">View Dashboard →</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="client-view-btn" onclick="viewClient('${c.id}')">View Dashboard →</button>
+        <button class="client-delete-btn" onclick="openDeleteClient('${c.id}')" title="Delete client permanently">Delete</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -997,6 +1083,88 @@ function renderAdminHome() {
     ` : ''}
     <div class="section-heading">Active Clients</div>
     <div class="client-grid">${clientRowsHtml || '<div class="no-wins">No clients found.</div>'}</div>`;
+}
+
+// ── RENDER ADMIN DATA DASHBOARD ──────────────────────────────────────────────
+// 4 KPIs rolled up across all active clients (activity in last 90 days + intake
+// complete + strategy released). Fetches fresh from the Worker on every render.
+async function renderAdminData() {
+  const panel = document.getElementById('tab-data');
+  panel.innerHTML = `
+    <div class="section-heading">DISRUPT Launch — Data <span class="section-sub">Rolling 90-day window</span></div>
+    <div class="data-kpi-grid">
+      <div class="data-kpi"><div class="data-kpi-label">Active Clients</div><div class="data-kpi-num" id="dkpi-clients">…</div><div class="data-kpi-sub">Intake complete · strategy released · activity in 90d</div></div>
+      <div class="data-kpi pink"><div class="data-kpi-label">Tasks Completed</div><div class="data-kpi-num" id="dkpi-tasks">…</div><div class="data-kpi-sub">Summed across active clients</div></div>
+      <div class="data-kpi yellow"><div class="data-kpi-label">Calls Generated</div><div class="data-kpi-num" id="dkpi-cases">…</div><div class="data-kpi-sub">At-need cases logged by active clients</div></div>
+      <div class="data-kpi blue"><div class="data-kpi-label">Revenue Generated</div><div class="data-kpi-num" id="dkpi-revenue">…</div><div class="data-kpi-sub">Monthly revenue logged · last 90 days</div></div>
+    </div>
+    <div class="data-note">Active = client who has completed intake, had their strategy released, and has logged activity (login, metrics update, task, or revenue entry) in the last 90 days. Revenue reflects values clients type into their Execute tab each month.</div>`;
+  try {
+    const data = await apiPost('/admin/aggregate-stats', { token: sessionToken() });
+    document.getElementById('dkpi-clients').textContent = data.activeClients || 0;
+    document.getElementById('dkpi-tasks').textContent   = data.tasksCompleted || 0;
+    document.getElementById('dkpi-cases').textContent   = data.casesGenerated || 0;
+    document.getElementById('dkpi-revenue').textContent = '$' + Number(data.revenueGenerated || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  } catch (e) {
+    panel.innerHTML += `<div class="no-wins" style="color:#B00020">Couldn't load stats: ${escHtml(e.message||'')}</div>`;
+  }
+}
+
+// ── DELETE CLIENT (admin, fail-safe) ─────────────────────────────────────────
+// Three-gate: (1) typed business name, (2) admin password re-entry, (3) click
+// the red DELETE PERMANENTLY button. Backend re-verifies the admin password.
+let PENDING_DELETE_ID = null;
+function openDeleteClient(clientId) {
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(clientId));
+  if (!c) { toast('Client not found', 'error'); return; }
+  PENDING_DELETE_ID = clientId;
+  document.getElementById('delmod-name').textContent = c.name || '(unnamed)';
+  document.getElementById('delmod-contact').textContent = (c.contact_name || '') + ' · ' + (c.email || '');
+  document.getElementById('delmod-confirm-name').value = '';
+  document.getElementById('delmod-password').value = '';
+  document.getElementById('delmod-confirm-btn').disabled = true;
+  document.getElementById('delete-modal').classList.add('open');
+  setTimeout(() => document.getElementById('delmod-confirm-name').focus(), 50);
+}
+function closeDeleteClient() {
+  PENDING_DELETE_ID = null;
+  document.getElementById('delete-modal').classList.remove('open');
+}
+function checkDeleteReady() {
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(PENDING_DELETE_ID));
+  if (!c) return;
+  const typed = document.getElementById('delmod-confirm-name').value.trim();
+  const pw    = document.getElementById('delmod-password').value;
+  const nameOk = typed.toLowerCase() === (c.name || '').trim().toLowerCase() && typed.length > 0;
+  const pwOk   = pw.length >= 6;
+  document.getElementById('delmod-confirm-btn').disabled = !(nameOk && pwOk);
+}
+async function submitDeleteClient() {
+  if (!PENDING_DELETE_ID) return;
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(PENDING_DELETE_ID));
+  if (!c) return;
+  const typed = document.getElementById('delmod-confirm-name').value.trim();
+  const pw    = document.getElementById('delmod-password').value;
+  const finalOk = confirm('Last check — permanently delete "' + (c.name || '') + '"? This cannot be undone.');
+  if (!finalOk) return;
+  const btn = document.getElementById('delmod-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    await apiPost('/admin/delete-client', {
+      token: sessionToken(),
+      targetClientId: PENDING_DELETE_ID,
+      confirmName: typed,
+      adminPassword: pw,
+    });
+    closeDeleteClient();
+    toast('Deleted "' + (c.name || '') + '"', 'success');
+    // Refresh the admin list so the row disappears
+    await loadDashboardData();
+    renderAll();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'DELETE PERMANENTLY';
+    toast(e.message || 'Delete failed', 'error');
+  }
 }
 
 // ── RENDER EXECUTE ────────────────────────────────────────────────────────────
@@ -1073,7 +1241,83 @@ function renderExecute(weekNum) {
           <div class="disrupt-notes-text">${note}</div>
         </div>
       </div>
+    </div>
+    <div class="revenue-card">
+      <div class="revenue-card-head">Monthly Revenue</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:14px">Log the revenue you brought in each month. We use this to show real ROI over time. Update once a month is ideal — the most recent value wins.</div>
+      <div class="revenue-input-row">
+        <div class="revenue-field">
+          <span class="revenue-field-label">Month</span>
+          <input type="month" id="rev-month" value="${currentMonthYYYYMM()}">
+        </div>
+        <div class="revenue-field">
+          <span class="revenue-field-label">Revenue (USD)</span>
+          <input type="number" id="rev-amount" min="0" step="1" placeholder="e.g. 47500" inputmode="numeric">
+        </div>
+        <button class="revenue-save-btn" id="rev-save-btn" onclick="saveMonthlyRevenue()">Save</button>
+      </div>
+      <div class="revenue-history">
+        <div class="revenue-history-head">Recent Entries</div>
+        <div id="rev-history-list" style="font-size:13px;color:var(--muted)">Loading…</div>
+      </div>
     </div>`;
+  loadMonthlyRevenue();
+}
+
+// Month helpers for the revenue input
+function currentMonthYYYYMM() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+}
+function fmtMonthLabel(ym) {
+  const [y, m] = String(ym).split('-');
+  if (!y || !m) return ym;
+  const d = new Date(Date.UTC(parseInt(y,10), parseInt(m,10) - 1, 1));
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+async function saveMonthlyRevenue() {
+  const month = document.getElementById('rev-month').value;
+  const amount = document.getElementById('rev-amount').value;
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) { toast('Pick a month first', 'error'); return; }
+  const amt = parseFloat(amount);
+  if (!isFinite(amt) || amt < 0) { toast('Enter a valid revenue amount', 'error'); return; }
+  const btn = document.getElementById('rev-save-btn');
+  btn.disabled = true; const oldLbl = btn.textContent; btn.textContent = 'Saving…';
+  try {
+    const body = { token: sessionToken(), month, amount: amt };
+    if (SESSION.viewingClientId && SESSION.role === 'admin') body.targetClientId = SESSION.viewingClientId;
+    await apiPost('/dashboard/save-revenue', body);
+    toast('Revenue saved', 'success');
+    document.getElementById('rev-amount').value = '';
+    await loadMonthlyRevenue();
+  } catch (e) {
+    toast(e.message || 'Could not save revenue', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = oldLbl;
+  }
+}
+
+async function loadMonthlyRevenue() {
+  const list = document.getElementById('rev-history-list');
+  if (!list) return;
+  try {
+    const body = { token: sessionToken() };
+    if (SESSION.viewingClientId && SESSION.role === 'admin') body.targetClientId = SESSION.viewingClientId;
+    const data = await apiPost('/dashboard/list-revenue', body);
+    const rows = (data.revenue || []).slice(0, 12);
+    if (rows.length === 0) {
+      list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0">No entries yet. Add your first month above.</div>';
+      return;
+    }
+    list.innerHTML = rows.map(r => {
+      const ym = String(r.month || '').slice(0, 7);
+      const amt = Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      return `<div class="revenue-row"><div class="revenue-row-month">${fmtMonthLabel(ym)}</div><div class="revenue-row-amt">$${amt}</div></div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="font-size:13px;color:#B00020;padding:6px 0">Could not load history: ' + escHtml(e.message || '') + '</div>';
+  }
 }
 
 // ── TASK CYCLE ────────────────────────────────────────────────────────────────
@@ -1270,20 +1514,13 @@ function renderStrategyGoals() {
   </div>`;
 
   if (!raw) {
-    // Demo mode / no generation yet — keep polished conference content
+    // Strategy not yet generated — generic placeholder (client's real numbers
+    // replace this once their intake runs through the model pipeline).
     return wrap(`
-      <div class="strat-stat-row">
-        <div class="strat-stat"><span class="strat-stat-num">+27</span><span class="strat-stat-label">Target Cases / 90 Days</span></div>
-        <div class="strat-stat"><span class="strat-stat-num">100</span><span class="strat-stat-label">Google Review Goal</span></div>
-        <div class="strat-stat"><span class="strat-stat-num">+6</span><span class="strat-stat-label">Pre-Need Inquiries</span></div>
-        <div class="strat-stat"><span class="strat-stat-num">$181K</span><span class="strat-stat-label">Revenue Target</span></div>
-      </div>
       <div class="strat-highlight">
-        <span class="strat-highlight-label">90-Day Mission</span>
-        <div class="strat-highlight-text">Make Huff-Guthrie the most visible, most trusted, and most talked-about funeral home in Franklin and the surrounding communities — in a way that feels authentic, not performative.</div>
+        <span class="strat-highlight-label">Your strategy is being prepared</span>
+        <div class="strat-highlight-text">Once your intake is complete and your strategy is released, this section will display your custom 90-day goals and revenue projections — built from your own numbers.</div>
       </div>
-      <div class="strat-card"><span class="strat-card-label">Revenue Model</span><div class="strat-card-body">27 additional cases × $6,700 average = <strong>$180,900 projected ROI</strong>. Monthly content investment pays for itself with a single incremental at-need case. Break-even happens in month one.</div></div>
-      <div class="strat-card"><span class="strat-card-label">Review Strategy</span><div class="strat-card-body">85 reviews at launch, 5.0 rating. Goal: 100 reviews by Day 90. Method: 2 text-based review requests per week, sent within 48 hours of service completion. Never mass blast. Always personal. Always specific.</div></div>
     `);
   }
 
@@ -1997,6 +2234,19 @@ function showTab(name, btn) {
   if(btn) btn.classList.add('active');
   if(name==='execute') renderExecute(SESSION.activeWeek||getCurrentWeek());
   if(name==='home') { if(SESSION.role==='admin'&&!SESSION.viewingClientId) renderAdminHome(); else renderHome(); }
+  if(name==='data'   && SESSION.role==='admin' && !SESSION.viewingClientId) renderAdminData();
+}
+
+// Admin-not-impersonating: only Home + Data. Everyone else: Home + Execute + Strategy.
+function applyNavVisibility() {
+  const isAdminHome = SESSION.role === 'admin' && !SESSION.viewingClientId;
+  const show = (id, visible) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  };
+  show('tab-btn-data',     isAdminHome);
+  show('tab-btn-execute',  !isAdminHome);
+  show('tab-btn-strategy', !isAdminHome);
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
