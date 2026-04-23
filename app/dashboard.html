@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Supabase CDN removed: browser no longer talks to Supabase directly.
      All DB reads/writes go through the Cloudflare Worker (JWT-authenticated). -->
+<!-- html2pdf.js — client-side PDF export of the released Strategy tab -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
 <style>
 [data-theme="light"]{
@@ -231,10 +233,32 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .revenue-row:last-child{border-bottom:none;}
 .revenue-row-month{color:var(--muted);font-family:var(--font-mono);font-size:12px;letter-spacing:0.5px;text-transform:uppercase;}
 .revenue-row-amt{font-weight:600;}
+.revenue-chart-wrap{margin:0 0 18px;padding:12px 0 6px;border-bottom:1px solid var(--border);}
+.revenue-chart-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.revenue-chart svg{display:block;width:100%;height:96px;}
+.revenue-chart-empty{font-size:12px;color:var(--muted);padding:8px 0;}
+.revenue-chart-last{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px;}
+.revenue-chart-last strong{color:var(--text);}
+
+/* Strategy PDF export */
+.strategy-tools{display:flex;justify-content:flex-end;align-items:center;padding:14px 0 10px;gap:10px;}
+.pdf-export-btn{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:var(--pink);color:#fff;border:none;border-radius:6px;padding:10px 18px;cursor:pointer;font-weight:700;transition:background .15s;}
+.pdf-export-btn:hover{background:#E00059;}
+.pdf-export-btn:disabled{background:#888;cursor:wait;}
+.pdf-export-hint{font-size:11px;color:var(--muted);}
+/* Print-only tweaks — used during html2pdf render */
+.pdf-rendering .strategy-subnav{display:none!important;}
+.pdf-rendering .strategy-tools{display:none!important;}
 
 /* Delete client button + modal */
-.client-delete-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#B00020;border:1px solid #B00020;border-radius:5px;padding:6px 10px;cursor:pointer;margin-left:8px;}
+.client-delete-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#B00020;border:1px solid #B00020;border-radius:5px;padding:6px 10px;cursor:pointer;}
 .client-delete-btn:hover{background:#B00020;color:#fff;}
+.client-unrelease-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#B97100;border:1px solid #B97100;border-radius:5px;padding:6px 10px;cursor:pointer;}
+.client-unrelease-btn:hover{background:#B97100;color:#fff;}
+.queue-bulk-btn{font-family:var(--font-mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;background:var(--pink);color:#fff;border:none;border-radius:5px;padding:8px 14px;cursor:pointer;font-weight:700;margin-left:auto;}
+.queue-bulk-btn:hover{background:#E00059;}
+.queue-bulk-btn:disabled{background:#888;cursor:wait;}
+.module-edited-badge{display:inline-block;margin-left:8px;padding:2px 8px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;background:#FFF0C2;color:#8B6F00;border-radius:4px;font-weight:700;}
 .delete-modal{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;}
 .delete-modal.open{display:flex;}
 .delete-modal-box{background:var(--bg2);border:2px solid #B00020;border-radius:10px;max-width:520px;width:100%;padding:28px 32px;box-shadow:0 20px 60px rgba(0,0,0,0.4);}
@@ -1030,8 +1054,9 @@ function renderAdminHome() {
         <div class="client-day">${day}</div>
         <div class="client-day-label">of 90 days</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <button class="client-view-btn" onclick="viewClient('${c.id}')">View Dashboard →</button>
+        ${(c.intake_answers||{})._strategy_released ? `<button class="client-unrelease-btn" onclick="unreleaseStrategy('${c.id}')" title="Pull strategy back into the review queue">Unrelease</button>` : ''}
         <button class="client-delete-btn" onclick="openDeleteClient('${c.id}')" title="Delete client permanently">Delete</button>
       </div>
     </div>`;
@@ -1076,7 +1101,10 @@ function renderAdminHome() {
       </div>
     </div>
     ${guidedReview.length ? `
-      <div class="section-heading">Guided Review Queue <span class="section-sub">Intake complete — awaiting your review + release</span></div>
+      <div class="section-heading" style="display:flex;align-items:center;gap:12px">
+        <span>Guided Review Queue <span class="section-sub">Intake complete — awaiting your review + release</span></span>
+        ${guidedReview.length >= 2 ? `<button class="queue-bulk-btn" id="queue-bulk-btn" onclick="bulkReleaseQueue()">Release All ${guidedReview.length} →</button>` : ''}
+      </div>
       <div class="review-grid">${guidedReviewHtml}</div>
     ` : ''}
     <div class="section-heading">Active Clients</div>
@@ -1254,6 +1282,11 @@ function renderExecute(weekNum) {
         </div>
         <button class="revenue-save-btn" id="rev-save-btn" onclick="saveMonthlyRevenue()">Save</button>
       </div>
+      <div class="revenue-chart-wrap" id="rev-chart-wrap" style="display:none">
+        <div class="revenue-chart-label">12-month trend</div>
+        <div class="revenue-chart" id="rev-chart"></div>
+        <div class="revenue-chart-last" id="rev-chart-last"></div>
+      </div>
       <div class="revenue-history">
         <div class="revenue-history-head">Recent Entries</div>
         <div id="rev-history-list" style="font-size:13px;color:var(--muted)">Loading…</div>
@@ -1306,6 +1339,7 @@ async function loadMonthlyRevenue() {
     const rows = (data.revenue || []).slice(0, 12);
     if (rows.length === 0) {
       list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0">No entries yet. Add your first month above.</div>';
+      renderRevenueChart([]);
       return;
     }
     list.innerHTML = rows.map(r => {
@@ -1313,9 +1347,53 @@ async function loadMonthlyRevenue() {
       const amt = Number(r.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
       return `<div class="revenue-row"><div class="revenue-row-month">${fmtMonthLabel(ym)}</div><div class="revenue-row-amt">$${amt}</div></div>`;
     }).join('');
+    renderRevenueChart(rows);
   } catch (e) {
     list.innerHTML = '<div style="font-size:13px;color:#B00020;padding:6px 0">Could not load history: ' + escHtml(e.message || '') + '</div>';
   }
+}
+
+// 12-month revenue sparkline, rendered as an inline SVG line+area chart.
+// Takes rows in month-desc order from the Worker. Hidden entirely if <2 points.
+function renderRevenueChart(rowsDesc) {
+  const wrap = document.getElementById('rev-chart-wrap');
+  const host = document.getElementById('rev-chart');
+  const last = document.getElementById('rev-chart-last');
+  if (!wrap || !host) return;
+  if (!rowsDesc || rowsDesc.length < 2) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const rows = rowsDesc.slice().reverse();
+  const W = 600, H = 96, PAD_X = 6, PAD_Y = 10;
+  const amounts = rows.map(r => Number(r.amount || 0));
+  const maxV = Math.max(...amounts, 1);
+  const minV = Math.min(...amounts, 0);
+  const range = Math.max(maxV - minV, 1);
+  const x = i => PAD_X + (i * (W - PAD_X * 2)) / Math.max(rows.length - 1, 1);
+  const y = v => PAD_Y + (H - PAD_Y * 2) * (1 - (v - minV) / range);
+  const line = rows.map((r, i) => (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(Number(r.amount || 0)).toFixed(1)).join(' ');
+  const area = line + ' L ' + x(rows.length - 1).toFixed(1) + ',' + (H - PAD_Y) + ' L ' + x(0).toFixed(1) + ',' + (H - PAD_Y) + ' Z';
+  const lastRow = rows[rows.length - 1];
+  const prevRow = rows[rows.length - 2];
+  const delta = lastRow && prevRow ? (Number(lastRow.amount || 0) - Number(prevRow.amount || 0)) : 0;
+  const dots = rows.map((r, i) => {
+    const isLast = i === rows.length - 1;
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(Number(r.amount || 0)).toFixed(1)}" r="${isLast ? 4 : 2.5}" fill="${isLast ? 'var(--pink)' : 'var(--green)'}"/>`;
+  }).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--green)" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="var(--green)" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#rev-fill)" stroke="none"/>
+    <path d="${line}" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+  </svg>`;
+  const lastLabel = fmtMonthLabel(String(lastRow.month || '').slice(0, 7));
+  const lastAmt = Number(lastRow.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const deltaLbl = delta === 0 ? '' : (delta > 0 ? ' · ▲ $' + Math.abs(delta).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' vs prior' : ' · ▼ $' + Math.abs(delta).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' vs prior');
+  last.innerHTML = `<span>${lastLabel}</span><span><strong>$${lastAmt}</strong>${deltaLbl}</span>`;
 }
 
 // ── TASK CYCLE ────────────────────────────────────────────────────────────────
@@ -1483,6 +1561,10 @@ function renderStrategy() {
   const sections = ['goals','competitors','brand','personas','scripts','preneed','roadmap'];
   const labels   = ['Goals','Competitors','Brand','Personas','Scripts','Pre-Need','Roadmap'];
   document.getElementById('tab-strategy').innerHTML = `
+    <div class="strategy-tools">
+      <span class="pdf-export-hint">Your full strategy, as a PDF</span>
+      <button class="pdf-export-btn" onclick="exportStrategyPDF()" id="pdf-export-btn">Download PDF ↓</button>
+    </div>
     <div class="strategy-subnav">
       ${sections.map((s,i)=>`<button class="snav-btn${i===0?' active':''}" onclick="scrollToSection('${s}',this)">${labels[i]}</button>`).join('')}
     </div>
@@ -1495,6 +1577,46 @@ function renderStrategy() {
       ${renderStrategyPreneed()}
       ${renderStrategyRoadmap()}
     </div>`;
+}
+
+// ── STRATEGY PDF EXPORT ──────────────────────────────────────────────────────
+// Renders the Strategy tab into a downloadable multi-page PDF using html2pdf.
+async function exportStrategyPDF() {
+  if (typeof html2pdf === 'undefined') {
+    toast('PDF library still loading — try again in a moment', 'error');
+    return;
+  }
+  const panel = document.getElementById('tab-strategy');
+  if (!panel) return;
+  const btn = document.getElementById('pdf-export-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Building PDF…'; }
+  // Hide subnav + tools during capture. A class swap keeps it surgical.
+  panel.classList.add('pdf-rendering');
+  const src = SESSION.viewingClientData || SESSION.clientData || {};
+  const biz = (src.name || 'strategy').replace(/[^A-Za-z0-9 ]/g, '').trim().replace(/\s+/g, '-');
+  const today = new Date();
+  const stamp = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  const filename = 'DISRUPT-Launch-Strategy-' + biz + '-' + stamp + '.pdf';
+  try {
+    await html2pdf()
+      .set({
+        margin:       [14, 12, 14, 12],
+        filename,
+        image:        { type: 'jpeg', quality: 0.95 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'], before: '.strategy-section' },
+      })
+      .from(panel)
+      .save();
+    toast('Strategy PDF downloaded', 'success');
+  } catch (e) {
+    console.error('PDF export failed', e);
+    toast(e.message || 'Could not build PDF', 'error');
+  } finally {
+    panel.classList.remove('pdf-rendering');
+    if (btn) { btn.disabled = false; btn.textContent = 'Download PDF ↓'; }
+  }
 }
 
 function scrollToSection(id,btn) {
@@ -2297,11 +2419,15 @@ function openStrategyReview(clientId) {
   document.getElementById('srm-client-name').textContent = c.contact_name || c.name || '(no name)';
   document.getElementById('srm-client-meta').textContent = (c.name || '') + ' · ' + (c.email || '') + ' · Intake completed ' + (a._generated_at ? new Date(a._generated_at).toLocaleString() : '—');
   const body = document.getElementById('srm-body');
+  const editedMap = a._strategy_edited_modules || {};
   body.innerHTML = MODULE_ORDER.map(key => {
     const text = modules[key] || '';
+    const editedBadge = editedMap[key]
+      ? `<span class="module-edited-badge" title="Edited ${new Date(editedMap[key]).toLocaleString()}">Edited by strategist</span>`
+      : '';
     return `<div class="review-module" data-key="${key}">
       <div class="review-module-hdr">
-        <div class="review-module-title">${MODULE_LABELS[key]}</div>
+        <div class="review-module-title">${MODULE_LABELS[key]}${editedBadge}</div>
         <div class="review-module-status" id="srm-status-${key}">${text ? 'Saved' : 'No content'}</div>
       </div>
       <textarea class="review-module-textarea" id="srm-ta-${key}" oninput="markModuleDirty('${key}')">${escHtml(text)}</textarea>
@@ -2396,6 +2522,47 @@ async function releaseStrategy() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('strategy-review-modal').classList.contains('open')) closeStrategyReview();
 });
+
+// ── UNRELEASE (admin recovery) ───────────────────────────────────────────────
+async function unreleaseStrategy(clientId) {
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(clientId));
+  if (!c) { toast('Client not found', 'error'); return; }
+  if (!confirm('Pull "' + (c.name || c.contact_name) + '"\'s strategy back into the review queue? The client will lose access until you re-release. No email fires.')) return;
+  try {
+    await apiPost('/admin/unrelease-strategy', { token: sessionToken(), targetClientId: clientId });
+    toast('Strategy moved back into review queue', 'success');
+    await loadDashboardData();
+    renderAll();
+  } catch (e) {
+    toast(e.message || 'Unrelease failed', 'error');
+  }
+}
+
+// ── BULK RELEASE (admin queue) ───────────────────────────────────────────────
+async function bulkReleaseQueue() {
+  const queue = (SESSION.allClients || []).filter(c => {
+    const a = c.intake_answers || {};
+    return a._tier === 'guided' && a._intake_complete && !a._strategy_released;
+  });
+  if (queue.length === 0) { toast('Queue is empty', 'info'); return; }
+  if (!confirm('Release all ' + queue.length + ' strategies to their clients? Each client will get their release email immediately. This cannot be undone in bulk.')) return;
+  const btn = document.getElementById('queue-bulk-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Releasing 0 / ' + queue.length + '…'; }
+  let ok = 0, fail = 0;
+  for (const c of queue) {
+    try {
+      await apiPost('/admin/release-strategy', { token: sessionToken(), targetClientId: c.id });
+      ok++;
+    } catch (e) {
+      fail++;
+      console.warn('bulk release failed for', c.id, e.message);
+    }
+    if (btn) btn.textContent = 'Releasing ' + (ok + fail) + ' / ' + queue.length + '…';
+  }
+  toast('Released ' + ok + (fail > 0 ? ' · ' + fail + ' failed' : ''), fail > 0 ? 'error' : 'success');
+  await loadDashboardData();
+  renderAll();
+}
 
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
