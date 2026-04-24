@@ -335,6 +335,50 @@ textarea { resize: vertical; min-height: 96px; }
   </div>
 </div>
 
+<!-- SCREEN: CHECK INBOX — Landing page right after Stripe success. Sole purpose
+     is to tell the buyer "your setup link was just emailed, go click it."
+     Rendered when ?paid=1 is in the URL. Zero other CTAs; no way to bypass
+     the email and sign up separately. -->
+<div class="screen" id="screen-check-inbox">
+  <div class="welcome-wrap">
+    <div class="welcome-badge" id="check-inbox-badge">Payment received</div>
+    <h1 class="welcome-headline">Check your <span>inbox.</span></h1>
+    <p class="welcome-sub" id="check-inbox-sub">We just emailed a setup link to finish creating your DISRUPT Launch account. Click the link in that email to set your password and start your intake.</p>
+    <div class="welcome-steps">
+      <div class="welcome-step">
+        <div class="welcome-step-num">1</div>
+        <div>
+          <div class="welcome-step-title">Open your email</div>
+          <div class="welcome-step-sub">From <strong>launch@disruptmedia.co</strong>. Subject starts with "Welcome to DISRUPT Launch". Check spam if you don't see it within 5 minutes.</div>
+        </div>
+      </div>
+      <div class="welcome-step">
+        <div class="welcome-step-num">2</div>
+        <div>
+          <div class="welcome-step-title">Click the setup button</div>
+          <div class="welcome-step-sub">It lands you on the account setup form — name, password, and you're in.</div>
+        </div>
+      </div>
+      <div class="welcome-step">
+        <div class="welcome-step-num">3</div>
+        <div>
+          <div class="welcome-step-title">Fill the 20-minute intake</div>
+          <div class="welcome-step-sub">6 focused sections. Your 8 strategy modules generate in ~2 minutes after.</div>
+        </div>
+      </div>
+    </div>
+    <div id="resend-setup-wrap" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--line,#e5e5e5);">
+      <div style="font-family:var(--font-mono,monospace);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted,#888);margin-bottom:10px;">Didn't get the email?</div>
+      <div id="resend-setup-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input type="email" id="resend-setup-email" placeholder="you@yourfuneralhome.com" autocomplete="email" style="flex:1;min-width:240px;padding:12px 14px;border:1px solid var(--line,#ccc);border-radius:8px;font-size:15px;">
+        <button type="button" id="resend-setup-btn" onclick="submitResendSetup()" style="padding:12px 22px;background:var(--pink,#EF1A6B);color:#fff;border:0;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;">Resend setup link →</button>
+      </div>
+      <div id="resend-setup-msg" style="margin-top:12px;font-size:13px;color:var(--ink-2,#666);display:none;"></div>
+      <div style="margin-top:16px;font-size:12px;color:var(--muted,#888);">Still stuck? Email <a href="mailto:support@disruptmedia.co" style="color:var(--pink,#EF1A6B);">support@disruptmedia.co</a>.</div>
+    </div>
+  </div>
+</div>
+
 <!-- SCREEN: STRATEGY UNDER REVIEW — Guided client has finished intake + generation,
      their 8 modules exist but strategist hasn't released them yet. -->
 <div class="screen" id="screen-strategy-review">
@@ -848,6 +892,61 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
 // section they left off, answers pre-loaded. We hide `screen-mode` up front
 // so the returning user never sees the "pick your path" screen flash before
 // the redirect.
+// Stripe success_url lands here with ?paid=1 (and optionally &tier=self|guided).
+// We show the check-inbox screen and stop — the buyer must open their email
+// and click the setup link. This eliminates the old dual-path problem where
+// Stripe returners could also try to sign up fresh and hit a confusing 409.
+(function showCheckInboxIfPaid(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('paid') !== '1') return;
+  var modeEl = document.getElementById('screen-mode');
+  var welcomeEl = document.getElementById('screen-welcome');
+  var inboxEl = document.getElementById('screen-check-inbox');
+  if (modeEl) modeEl.classList.remove('active');
+  if (welcomeEl) welcomeEl.classList.remove('active');
+  if (inboxEl) inboxEl.classList.add('active');
+  // Tier-specific badge tweak so Guided buyers see "Guided · Payment received".
+  var tier = (params.get('tier') || '').toLowerCase();
+  var badge = document.getElementById('check-inbox-badge');
+  if (badge && tier === 'guided') badge.textContent = 'Guided · Payment received';
+  // Pre-fill the resend email field if Stripe passed it through.
+  var emailParam = params.get('email');
+  if (emailParam) {
+    var emailEl = document.getElementById('resend-setup-email');
+    if (emailEl) emailEl.value = emailParam;
+  }
+})();
+
+async function submitResendSetup(){
+  var emailEl = document.getElementById('resend-setup-email');
+  var btn = document.getElementById('resend-setup-btn');
+  var msg = document.getElementById('resend-setup-msg');
+  var email = (emailEl && emailEl.value || '').trim();
+  if (!email || email.indexOf('@') < 0) {
+    if (msg) { msg.style.display = 'block'; msg.style.color = '#c53030'; msg.textContent = 'Please enter a valid email address.'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  if (msg) { msg.style.display = 'none'; }
+  try {
+    var res = await fetch(WORKER_BASE + '/auth/resend-setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.color = res.ok ? '#1f7a3f' : '#c53030';
+      msg.textContent = data.message || (res.ok ? 'Setup link sent — check your inbox.' : 'Something went wrong. Please email support@disruptmedia.co.');
+    }
+  } catch(e) {
+    if (msg) { msg.style.display = 'block'; msg.style.color = '#c53030'; msg.textContent = 'Network error — please try again or email support@disruptmedia.co.'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Resend setup link →'; }
+  }
+}
+
 // Stripe buyer arriving via `?setup=TOKEN` — resolve the placeholder email,
 // drop them on the account-setup screen with email pre-filled + locked. They
 // still set their own password. Handled as its own IIFE (not tied to resume).
@@ -901,6 +1000,8 @@ function clearSession()    { try { localStorage.removeItem(SESSION_KEY); } catch
   var params = new URLSearchParams(location.search);
   // If a setup token is present, the resolveSetupToken IIFE above owns the UI.
   if (params.get('setup')) return;
+  // ?paid=1 is the Stripe success_url landing — check-inbox screen owns the UI.
+  if (params.get('paid') === '1') return;
   if (params.get('tier') || params.get('demo') === 'true' || params.get('tour') === 'true') return;
   var s = loadSession();
   if (!s || !s.token) return;

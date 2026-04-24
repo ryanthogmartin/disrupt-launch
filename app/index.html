@@ -667,7 +667,35 @@ body.demo-mode .hero{padding-top:156px;}
       </form>
       <div class="login-modal-footer">
         <a href="#" onclick="showForgotState(); return false;">Forgot your password?</a>
+        <span style="margin:0 10px;color:var(--muted);">·</span>
+        <a href="#" onclick="showResendSetupState(); return false;">Paid but didn't get your setup email?</a>
       </div>
+    </div>
+
+    <!-- STATE: RESEND SETUP (Stripe buyer who lost their welcome email) -->
+    <div id="auth-state-resend-setup" style="display:none;">
+      <div class="login-modal-eyebrow">Setup Link</div>
+      <div class="login-modal-title">Resend <span>setup email.</span></div>
+      <div class="login-modal-sub">Enter the email you paid with. If we find a purchase without a completed setup, we'll send you a fresh 30-day link to finish creating your account.</div>
+      <form id="resend-setup-form-modal" autocomplete="on" onsubmit="handleResendSetup(event); return false;">
+        <div class="login-modal-field">
+          <label class="login-modal-label" for="resend-setup-email-modal">Email</label>
+          <input class="login-modal-input" type="email" id="resend-setup-email-modal" name="email" placeholder="you@funeralhome.com" autocomplete="email" required>
+        </div>
+        <button type="submit" class="login-modal-btn" id="resend-setup-submit-btn">Send Setup Link →</button>
+        <div class="login-modal-err" id="resend-setup-err" role="alert" aria-live="polite"></div>
+      </form>
+      <div class="login-modal-footer">
+        <a href="#" onclick="showLoginState(); return false;">← Back to log in</a>
+      </div>
+    </div>
+
+    <!-- STATE: RESEND SETUP SENT -->
+    <div id="auth-state-resend-setup-sent" style="display:none;">
+      <div class="login-modal-eyebrow" style="color:var(--green);">Check Your Inbox</div>
+      <div class="login-modal-title">Setup link <span style="color:var(--green);">sent.</span></div>
+      <div class="login-modal-sub">If that email matches a purchase, a fresh setup link is on its way. Didn't see it in 2 minutes? Check spam or email <a href="mailto:support@disruptmedia.co">support@disruptmedia.co</a>.</div>
+      <button type="button" class="login-modal-btn" onclick="showLoginState();" style="background:transparent;color:var(--muted);border:1px solid var(--border2);">Back to log in</button>
     </div>
 
     <!-- STATE: FORGOT PASSWORD (request) -->
@@ -752,7 +780,7 @@ const _workerBase = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
   ? 'http://localhost:8787'
   : 'https://disrupt-proxy.disruptmedia.workers.dev';
 
-const _AUTH_STATES = ['login', 'forgot', 'forgot-sent', 'reset'];
+const _AUTH_STATES = ['login', 'forgot', 'forgot-sent', 'reset', 'resend-setup', 'resend-setup-sent'];
 function showAuthState(which) {
   _AUTH_STATES.forEach(s => {
     const el = document.getElementById('auth-state-' + s);
@@ -762,6 +790,7 @@ function showAuthState(which) {
 function showLoginState()  { showAuthState('login');  setTimeout(() => document.getElementById('login-email')?.focus(), 60); }
 function showForgotState() { showAuthState('forgot'); setTimeout(() => document.getElementById('forgot-email')?.focus(), 60); }
 function showResetState()  { showAuthState('reset');  setTimeout(() => document.getElementById('reset-password')?.focus(), 60); }
+function showResendSetupState() { showAuthState('resend-setup'); setTimeout(() => document.getElementById('resend-setup-email-modal')?.focus(), 60); }
 
 function openLoginModal(initialState) {
   document.getElementById('login-modal-overlay').classList.add('show');
@@ -775,7 +804,36 @@ function openLoginModal(initialState) {
 function closeLoginModal() {
   document.getElementById('login-modal-overlay').classList.remove('show');
   document.body.style.overflow = '';
-  ['login-err','forgot-err','reset-err'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = ''; });
+  ['login-err','forgot-err','reset-err','resend-setup-err'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = ''; });
+}
+
+async function handleResendSetup(e) {
+  e.preventDefault();
+  const email = document.getElementById('resend-setup-email-modal').value.trim().toLowerCase();
+  const errEl = document.getElementById('resend-setup-err');
+  const btn = document.getElementById('resend-setup-submit-btn');
+  errEl.textContent = '';
+  if (!email) { errEl.textContent = 'Enter your email.'; return; }
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch(_workerBase + '/auth/resend-setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      errEl.textContent = data.error || 'Something went wrong. Try again.';
+      btn.disabled = false; btn.textContent = originalLabel;
+      return;
+    }
+    showAuthState('resend-setup-sent');
+  } catch (err) {
+    errEl.textContent = 'Network issue. Check your connection and try again.';
+    btn.disabled = false; btn.textContent = originalLabel;
+  }
 }
 
 async function handleLogin(e) {
