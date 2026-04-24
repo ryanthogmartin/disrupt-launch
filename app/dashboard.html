@@ -1068,6 +1068,12 @@ function renderAdminHome() {
   const guidedReview = (SESSION.allClients || []).filter(c => {
     const a = c.intake_answers || {};
     return a._tier === 'guided' && a._intake_complete && !a._strategy_released;
+  }).sort((a,b) => {
+    // Oldest intake-complete first — stale items surface to the top so they
+    // don't rot in the queue.
+    const aTs = new Date((a.intake_answers||{})._generated_at || 0).getTime();
+    const bTs = new Date((b.intake_answers||{})._generated_at || 0).getTime();
+    return aTs - bTs;
   });
   const guidedReviewHtml = guidedReview.map(c => {
     const a = c.intake_answers || {};
@@ -1456,6 +1462,23 @@ function getGenOutput(moduleKey) {
   return (typeof v === 'string' && v.trim().length > 40) ? v : null;
 }
 
+// True only for the demo client (?demo=true / ?booth=true). Real clients who
+// somehow end up without generated output should NOT see hardcoded
+// "Huff-Guthrie / Franklin" sample content — they get a neutral placeholder.
+function isDemoClient() {
+  return (SESSION.clientId === 'demo-client-001') || (SESSION.viewingClientData && SESSION.viewingClientData.id === 'demo-client-001');
+}
+
+function strategyPendingPlaceholder(sectionLabel, sectionTitle) {
+  return `<div class="strategy-section">
+    <div class="strat-eyebrow">${escHtml(sectionLabel)}</div>
+    <div class="strat-title">${escHtml(sectionTitle)}</div>
+    <div class="strat-highlight" style="background:rgba(243,206,36,0.08);border-color:rgba(243,206,36,0.3)">
+      <div class="strat-highlight-text" style="color:var(--ink-2)">This section isn't available yet. If your strategy was recently released and you're seeing this, please refresh the page. If the issue persists, email <a href="mailto:support@disruptmedia.co" style="color:var(--pink)">support@disruptmedia.co</a>.</div>
+    </div>
+  </div>`;
+}
+
 // Split text on known ALL-CAPS section headers. Case-insensitive match, tolerates
 // trailing colon. Returns { headerStringUsed: contentBetweenHeaders }.
 function parseSections(text, headers) {
@@ -1693,6 +1716,7 @@ function renderStrategyCompetitors() {
   </div>`;
 
   if (!raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('Competitor Intel', 'Know Your Battlefield');
     const comps = [
       {name:'Gardinier-Warren Funeral Home',pos:'Legacy player — established brand, strong word of mouth',threat:'Families who prioritize tradition may default here without research.',attack:'They don\'t show up where the next generation of buyers lives: online, authentically, on video. Your content strategy out-positions them before the call is ever made.'},
       {name:'Timothy Hartle Funeral Home',pos:'Low-visibility competitor — minimal digital presence',threat:'May win on price if families don\'t know the difference.',attack:'Invisible online. No reviews worth noting, no video content, no community presence. Every post you publish makes them look more absent.'},
@@ -1781,6 +1805,7 @@ function renderStrategyBrand() {
   </div>`;
 
   if (!raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('Brand Guidelines', 'The Four Pillars');
     const pillars = [
       {title:'Show Up Completely',tagline:'"The Funeral Home That Shows Up"',body:'Suited professionals at every call. No casual dress, no exceptions. Community events that have nothing to do with funerals. A phone that gets answered. This is the operating standard that becomes the brand.'},
       {title:'Own the Building',tagline:'115-year Victorian landmark as a competitive moat',body:'No competitor in your market has a building that tells a story like yours. Full chapel, real architecture, visible investment. Every camera angle is a differentiator.'},
@@ -1923,6 +1948,7 @@ function renderStrategyPersonas() {
   </div>`;
 
   if (!raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('Customer Personas', 'Who Makes The Call');
     const personas = [
       {badge:'Primary Decision-Maker',name:'The Daughter Who Takes Charge',profile:'48–62, female, local or nearby, employed, adult children',trigger:'Called because nobody else will make the decision. Comes in overwhelmed.',fear:'Making the wrong choice and being judged by the rest of the family.',need:'Confidence that she picked right. Evidence before the call, not during it.',win:'"I chose them because of the videos I saw on Facebook. By the time I walked in, I already trusted them."'},
       {badge:'Pre-Planner',name:'The Organized Widower',profile:'65–78, male, recently lost spouse, local, financially stable',trigger:'Watched his wife handle everything and doesn\'t want to burden his kids.',fear:'Being a burden. Leaving a mess. Having no say in his own final arrangements.',need:'A straightforward process. No pressure. Someone who respects his time.',win:'"They didn\'t try to sell me anything. They just helped me get it done."'},
@@ -2003,6 +2029,7 @@ function renderStrategyScripts() {
   </div>`;
 
   if (!raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('Video Scripts', 'Ready to Film');
     const scripts = [
       {title:'Script 1: The Suit at 2 AM',tags:['Facebook Video','60–90 sec','Adam on Camera'],beats:[
         {name:'Hook',time:'0–5s',text:'You called us at 2 in the morning. I answered in a suit. That\'s not an accident — that\'s our standard.'},
@@ -2102,6 +2129,7 @@ function renderStrategyPreneed() {
   </div>`;
 
   if (!raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('Pre-Need Engine', 'Build the Pipeline');
     return wrap(`
       <div class="strat-highlight">
         <span class="strat-highlight-label">The Core Insight</span>
