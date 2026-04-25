@@ -497,6 +497,26 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
   .topbar-actions{gap:5px;margin-left:6px;}
   .icon-btn{width:28px;height:28px;font-size:12px;border-radius:6px;}
 }
+
+/* First-time client onboarding tour — fires once per (browser × client). */
+.fto-overlay{position:fixed;inset:0;background:rgba(15,11,12,0.72);z-index:9000;display:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.fto-overlay.show{display:block;}
+.fto-spotlight{position:absolute;border:2px solid var(--pink,#FF0166);border-radius:10px;box-shadow:0 0 0 9999px rgba(15,11,12,0.72),0 0 24px rgba(255,1,102,0.55);transition:all 0.28s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+.fto-popover{position:absolute;background:#fff;color:#1A1A1A;border-radius:12px;padding:22px 24px;width:320px;max-width:calc(100vw - 32px);box-shadow:0 24px 64px rgba(0,0,0,0.45);z-index:9001;transition:all 0.28s cubic-bezier(.4,0,.2,1);}
+.fto-eyebrow{font-family:var(--font-mono,'DM Mono',monospace);font-size:10px;color:#FF0166;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:700;}
+.fto-title{font-family:var(--font-display,'Bebas Neue',sans-serif);font-size:24px;line-height:1.1;color:#0F0B0C;margin-bottom:10px;}
+.fto-body{font-size:14px;line-height:1.55;color:#444;margin-bottom:18px;}
+.fto-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.fto-skip{background:transparent;border:none;color:#888;font-size:12px;cursor:pointer;text-decoration:underline;letter-spacing:.5px;padding:6px 4px;}
+.fto-skip:hover{color:#444;}
+.fto-next{background:#FF0166;color:#fff;border:none;border-radius:6px;padding:10px 22px;font-family:var(--font-display,'Bebas Neue',sans-serif);font-size:15px;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;transition:transform 0.1s,background 0.15s;}
+.fto-next:hover{background:#D90050;transform:translateY(-1px);}
+.fto-progress{display:flex;gap:6px;justify-content:center;margin-bottom:14px;}
+.fto-progress-dot{width:6px;height:6px;border-radius:50%;background:#E5E2DC;}
+.fto-progress-dot.active{background:#FF0166;}
+@media(max-width:520px){
+  .fto-popover{width:calc(100vw - 32px);left:16px !important;right:16px;}
+}
 </style>
 <link rel="stylesheet" href="tour.css">
 <script src="tour.js"></script>
@@ -568,6 +588,21 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
     <div class="tab-panel" id="tab-data"></div>
     <div class="tab-panel" id="tab-execute"></div>
     <div class="tab-panel" id="tab-strategy"></div>
+  </div>
+</div>
+
+<!-- FIRST-TIME ONBOARDING TOUR (clients only, fires once per browser+client) -->
+<div class="fto-overlay" id="fto-overlay">
+  <div class="fto-spotlight" id="fto-spotlight"></div>
+  <div class="fto-popover" id="fto-popover" role="dialog" aria-modal="true" aria-labelledby="fto-title">
+    <div class="fto-progress" id="fto-progress"></div>
+    <div class="fto-eyebrow" id="fto-eyebrow">Welcome</div>
+    <div class="fto-title" id="fto-title">Title</div>
+    <div class="fto-body" id="fto-body">Body</div>
+    <div class="fto-actions">
+      <button class="fto-skip" id="fto-skip" onclick="skipFirstTimeTour()">Skip tour</button>
+      <button class="fto-next" id="fto-next" onclick="nextFirstTimeTour()">Next →</button>
+    </div>
   </div>
 </div>
 
@@ -851,6 +886,119 @@ function launchApp() {
   if (savedTheme === 'dark') { tl.classList.remove('selected'); td.classList.add('selected'); }
   else { tl.classList.add('selected'); td.classList.remove('selected'); }
   renderAll();
+  // First-time onboarding tour — gated by localStorage so admins, demo,
+  // and impersonation flows never trigger it. Real clients see it once.
+  setTimeout(maybeStartFirstTimeTour, 600);
+}
+
+// ── FIRST-TIME ONBOARDING TOUR ───────────────────────────────────────────────
+// 3-step popover walkthrough. Fires once per (browser × client_id) combo —
+// the localStorage key includes client_id so a different client logging in
+// on the same browser still gets their own tour. Trigger criteria:
+//   - logged-in client (not admin, not impersonation)
+//   - strategy has been released (i.e., they have something to look at)
+//   - flag isn't already set
+const FTO_STEPS = [
+  { tabBtnId: 'tab-btn-home',     tabName: 'home',
+    eyebrow: 'STEP 1 · WELCOME',
+    title:   'This is your home base.',
+    body:    'Your dashboard pulls in your weekly progress, current focus, and team notes. Start every visit here.' },
+  { tabBtnId: 'tab-btn-strategy', tabName: 'strategy',
+    eyebrow: 'STEP 2 · STRATEGY',
+    title:   'Your full strategy lives here.',
+    body:    'Eight modules built from your intake — competitor intel, brand pillars, customer personas, video scripts, your 90-day roadmap. Yours, ready to execute.' },
+  { tabBtnId: 'tab-btn-execute',  tabName: 'execute',
+    eyebrow: 'STEP 3 · EXECUTE',
+    title:   'Your 90-day plan, week by week.',
+    body:    'Each week has 4 specific tasks. Check them off as you post. Most clients see their first real engagement lift within 10 days.' },
+];
+let _ftoStepIdx = 0;
+
+function ftoFlagKey() {
+  const cid = SESSION.clientId || (SESSION.clientData && SESSION.clientData.id) || 'anon';
+  return 'disrupt-onboarding-seen::' + cid;
+}
+
+function maybeStartFirstTimeTour() {
+  // Don't run for admin (whether or not impersonating), demo, or booth.
+  if (SESSION.role === 'admin') return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('demo') === 'true' || params.get('booth') === 'true' || params.get('tour') === 'true') return;
+  // Strategy must be released — otherwise there's nothing meaningful to walk through.
+  const a = (SESSION.clientData && SESSION.clientData.intake_answers) || {};
+  if (!a._strategy_released) return;
+  // Already seen?
+  try { if (localStorage.getItem(ftoFlagKey()) === '1') return; } catch(e) {}
+  startFirstTimeTour();
+}
+
+function startFirstTimeTour() {
+  _ftoStepIdx = 0;
+  document.getElementById('fto-overlay').classList.add('show');
+  renderFtoStep();
+  // Re-render on viewport resize so the spotlight tracks the highlighted tab.
+  window.addEventListener('resize', renderFtoStep);
+}
+
+function renderFtoStep() {
+  const step = FTO_STEPS[_ftoStepIdx];
+  if (!step) return finishFirstTimeTour();
+  // Switch the underlying dashboard to the right tab so the popover content
+  // matches what they see behind the highlight.
+  if (typeof showTab === 'function') {
+    const btn = document.getElementById(step.tabBtnId);
+    if (btn) showTab(step.tabName, btn);
+  }
+  // Spotlight position
+  const target = document.getElementById(step.tabBtnId);
+  const sp = document.getElementById('fto-spotlight');
+  const pop = document.getElementById('fto-popover');
+  if (target && sp) {
+    const r = target.getBoundingClientRect();
+    sp.style.top = (r.top - 6) + 'px';
+    sp.style.left = (r.left - 6) + 'px';
+    sp.style.width = (r.width + 12) + 'px';
+    sp.style.height = (r.height + 12) + 'px';
+    // Popover position — below the tab if there's room, otherwise centered.
+    const popH = pop.offsetHeight || 220;
+    const vh = window.innerHeight;
+    const below = r.bottom + 18;
+    if (below + popH < vh - 16) {
+      pop.style.top = below + 'px';
+      pop.style.left = Math.max(16, Math.min(window.innerWidth - 336, r.left - 30)) + 'px';
+    } else {
+      // fallback: centered
+      pop.style.top = ((vh - popH) / 2) + 'px';
+      pop.style.left = ((window.innerWidth - 320) / 2) + 'px';
+    }
+  }
+  document.getElementById('fto-eyebrow').textContent = step.eyebrow;
+  document.getElementById('fto-title').textContent   = step.title;
+  document.getElementById('fto-body').textContent    = step.body;
+  // Progress dots
+  const prog = document.getElementById('fto-progress');
+  prog.innerHTML = FTO_STEPS.map((_, i) =>
+    '<span class="fto-progress-dot' + (i === _ftoStepIdx ? ' active' : '') + '"></span>'
+  ).join('');
+  // Last step says "Got it" instead of "Next"
+  document.getElementById('fto-next').textContent = (_ftoStepIdx === FTO_STEPS.length - 1) ? 'Got it →' : 'Next →';
+}
+
+function nextFirstTimeTour() {
+  _ftoStepIdx++;
+  if (_ftoStepIdx >= FTO_STEPS.length) return finishFirstTimeTour();
+  renderFtoStep();
+}
+
+function skipFirstTimeTour() { finishFirstTimeTour(); }
+
+function finishFirstTimeTour() {
+  document.getElementById('fto-overlay').classList.remove('show');
+  window.removeEventListener('resize', renderFtoStep);
+  try { localStorage.setItem(ftoFlagKey(), '1'); } catch(e) {}
+  // Land them back on the home tab so they start in a familiar place.
+  const homeBtn = document.getElementById('tab-btn-home');
+  if (homeBtn && typeof showTab === 'function') showTab('home', homeBtn);
 }
 
 // ── RENDER ALL ───────────────────────────────────────────────────────────────
