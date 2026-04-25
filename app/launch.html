@@ -1681,6 +1681,12 @@ async function generateScripts(arg) {
     ? { intake: arg, brand: '', personas: '', week1: '', roadmap: '' }
     : (arg || {});
 
+  // Pre-process week_posts into a compact video-only summary. Passing all
+  // 65 detailed posts (~30K input tokens) caused 524 origin timeouts on
+  // Cloudflare. Video posts are the only ones scripts need to know about
+  // anyway — photos, galleries, and text posts don't get scripted.
+  const videoSummary = summarizeVideosForScripts(input.week1 || '');
+
   const scriptPrompt = [
     'CLIENT INTELLIGENCE:\n', input.intake || '',
     '\n\n==================================================',
@@ -1688,17 +1694,17 @@ async function generateScripts(arg) {
     '\n\n==================================================',
     '\nCUSTOMER PERSONAS (target these specific humans with their specific winning messages):\n', input.personas || '[not available]',
     '\n\n==================================================',
-    '\n13-WEEK FACEBOOK CONTENT PLAN (identify every video / Reel post across all 13 weeks — pick the most strategically important ones for scripts):\n', input.week1 || '[not available]',
+    '\nVIDEO POSTS ACROSS THE 13-WEEK PLAN (each line is one video — pick the most strategically important to script):\n', videoSummary || '[not available]',
     '\n\n==================================================',
     '\n90-DAY ROADMAP OVERVIEW (pillars, platform strategy, weekly themes):\n', input.roadmap || '[not available]',
     '\n\n==================================================',
-    '\n\nYour job: produce production-ready video / Reel scripts for the most important video posts across the 13-week plan. Every post in the plan is built for Facebook (and cross-posted to Instagram Reels where applicable). Do not invent generic themes — tie every script to a specific post or theme from the plan above.',
+    '\n\nYour job: produce production-ready video / Reel scripts for the most important video posts across the 13-week plan. Every post is built for Facebook (and cross-posted to Instagram Reels where applicable). Do not invent generic themes — tie every script to a specific video listed above.',
     '\n\nRULES:',
     '\n1. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
     '\n2. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER words verbatim where natural.',
     '\n3. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
-    '\n4. Cover the most strategically important video posts spread across the 13 weeks — not all from Week 1. Aim for 1-2 scripts per quarter of the plan (early, mid, late) plus 2-3 evergreen scripts (one per message pillar).',
-    '\n5. Minimum 10 scripts. Maximum 14. Don\'t pad.',
+    '\n4. Spread coverage across the 13 weeks — not all from early weeks. 1-2 scripts per quarter (early, mid, late) plus 2 evergreen scripts (one per top message pillar).',
+    '\n5. Minimum 6 scripts. Maximum 8. Don\'t pad. Quality over quantity.',
     '\n\nFORMAT EACH SCRIPT EXACTLY (use these ALL-CAPS headers verbatim, no variations):',
     '\n\nSCRIPT {N}: [Title — tied to the source post or pillar]',
     '\nPLATFORM: [Facebook / Facebook Reel — the latter for shorter vertical content. Default to Facebook.]',
@@ -1714,8 +1720,43 @@ async function generateScripts(arg) {
     '\n\n---\n\nNumber scripts SCRIPT 1: through SCRIPT N: sequentially. No headers, no preamble, just the scripts.',
   ].join('');
 
-  // 8-12 full scripts with 6 sections each — needs the full 12k-token window.
-  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 12000 });
+  // 6-8 scripts at ~600 tokens each = ~5000 output tokens. 6000 cap leaves
+  // headroom without bloating the request beyond Cloudflare's origin timeout.
+  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 6000 });
+}
+
+// Compact video-only summary of the 13-week × 5-post content plan, formatted
+// for the scripts prompt. One line per video post, prefixed with its week +
+// position, including just the type and visual-direction teaser. Strips
+// captions/hashtags/cross-post info — scripts don't need that, and including
+// it tripled the prompt size and caused 524 origin timeouts.
+function summarizeVideosForScripts(week1Concat) {
+  if (!week1Concat) return '';
+  const lines = [];
+  // The concatenated text is "=== WEEK N ===\n<week text>\n\n=== WEEK M ===\n..."
+  const weekChunks = week1Concat.split(/===\s*WEEK\s+(\d+)\s*===/i).slice(1);
+  // After split: ["1", "<week 1 text>", "2", "<week 2 text>", ...]
+  for (let i = 0; i < weekChunks.length; i += 2) {
+    const wkNum = weekChunks[i];
+    const wkText = weekChunks[i + 1] || '';
+    // Pull each "POST N" block, find video ones, summarize each
+    const postBlocks = wkText.split(/^POST\s+(\d+)/im).slice(1);
+    for (let j = 0; j < postBlocks.length; j += 2) {
+      const postNum = postBlocks[j];
+      const postText = postBlocks[j + 1] || '';
+      const typeMatch = /POST\s+TYPE\s*[:：]\s*([^\n]+)/i.exec(postText);
+      const type = typeMatch ? typeMatch[1].trim() : '';
+      // Only keep video / reel / film posts
+      if (!/\b(video|reel|film)\b/i.test(type)) continue;
+      const visualMatch = /VISUAL\s+DIRECTION\s*[:：]\s*([^\n]+)/i.exec(postText);
+      let visual = visualMatch ? visualMatch[1].trim() : '';
+      // First sentence/clause only
+      visual = visual.split(/\.\s|—\s/)[0].trim();
+      if (visual.length > 140) visual = visual.slice(0, 137) + '…';
+      lines.push('Week ' + wkNum + ' Post ' + postNum + ' (' + type + '): ' + visual);
+    }
+  }
+  return lines.join('\n');
 }
 
 async function generatePreneed(ctx) {
