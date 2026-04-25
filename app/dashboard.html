@@ -1137,6 +1137,18 @@ async function renderAdminData() {
     document.getElementById('dkpi-tasks').textContent   = data.tasksCompleted || 0;
     document.getElementById('dkpi-cases').textContent   = data.casesGenerated || 0;
     document.getElementById('dkpi-revenue').textContent = '$' + Number(data.revenueGenerated || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    // Empty-state banner — distinguishes "no clients yet" from "clients but
+    // none are active" so $0/0/0/0 isn't misread as a broken stats endpoint.
+    const totalClients = (SESSION.allClients || []).length;
+    const noActive = (data.activeClients || 0) === 0;
+    if (noActive) {
+      const msg = totalClients === 0
+        ? 'You haven\'t released any strategies yet. Once a client completes intake and you release their strategy, they\'ll start showing up here.'
+        : 'No active clients in the last 90 days. Clients become active when they log in, log monthly revenue, complete tasks, or update metrics.';
+      panel.insertAdjacentHTML('beforeend',
+        `<div class="data-empty" style="margin-top:18px;padding:16px 18px;background:rgba(243,206,36,0.08);border:1px solid rgba(243,206,36,0.3);border-radius:8px;color:var(--ink-2);font-size:13px;line-height:1.55">${escHtml(msg)}</div>`
+      );
+    }
   } catch (e) {
     panel.innerHTML += `<div class="no-wins" style="color:#B00020">Couldn't load stats: ${escHtml(e.message||'')}</div>`;
   }
