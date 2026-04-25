@@ -3048,15 +3048,26 @@ function selectTheme(t) {
 }
 
 // ── STRATEGY REVIEW MODAL (admin-only) ────────────────────────────────────────
-// Lets the strategist inline-edit each of the 8 generated modules and release
-// the strategy to the client. All writes hit the Worker's /admin/* endpoints
+// Lets the strategist inline-edit each generated module and release the
+// strategy to the client. All writes hit the Worker's /admin/* endpoints
 // which verify admin JWT server-side.
-const MODULE_ORDER = ['goals','competitors','brand','personas','scripts','preneed','roadmap','week1'];
-const MODULE_LABELS = {
+//
+// Two layers of editable content:
+//   1. Strategic modules (7): goals, competitors, brand, personas, scripts,
+//      preneed, roadmap — each a single textarea
+//   2. Weekly content (13): week_posts.1 through week_posts.13 — each a
+//      collapsible <details> panel with its own textarea, since 13 weeks of
+//      always-open textareas would overflow the modal
+const STRATEGIC_MODULE_ORDER = ['goals','competitors','brand','personas','scripts','preneed','roadmap'];
+const STRATEGIC_MODULE_LABELS = {
   goals: 'Goals & Scorecard', competitors: 'Competitor Intel', brand: 'Brand Guidelines',
   personas: 'Customer Personas', scripts: 'Video Scripts', preneed: 'Pre-Need Engine',
-  roadmap: '90-Day Roadmap', week1: 'Week 1 Calendar'
+  roadmap: '90-Day Roadmap (overview)'
 };
+// Backward compat: legacy clients had week1 instead of week_posts.
+const LEGACY_MODULE_ORDER = ['goals','competitors','brand','personas','scripts','preneed','roadmap','week1'];
+const LEGACY_MODULE_LABELS = Object.assign({}, STRATEGIC_MODULE_LABELS, { week1: 'Week 1 Calendar (legacy)' });
+
 let SRM = { clientId: null, client: null, modules: {}, dirty: {} };
 
 function openStrategyReview(clientId) {
@@ -3064,27 +3075,69 @@ function openStrategyReview(clientId) {
   if (!c) { toast('Client not found', 'error'); return; }
   const a = c.intake_answers || {};
   const modules = a._strategy_generated_output || {};
+  const isLegacy = !modules.week_posts && !!modules.week1;
+
   SRM = { clientId, client: c, modules: Object.assign({}, modules), dirty: {} };
   document.getElementById('srm-client-name').textContent = c.contact_name || c.name || '(no name)';
   document.getElementById('srm-client-meta').textContent = (c.name || '') + ' · ' + (c.email || '') + ' · Intake completed ' + (a._generated_at ? new Date(a._generated_at).toLocaleString() : '—');
   const body = document.getElementById('srm-body');
   const editedMap = a._strategy_edited_modules || {};
-  body.innerHTML = MODULE_ORDER.map(key => {
-    const text = modules[key] || '';
+
+  const renderModule = (key, label, text) => {
     const editedBadge = editedMap[key]
       ? `<span class="module-edited-badge" title="Edited ${new Date(editedMap[key]).toLocaleString()}">Edited by strategist</span>`
       : '';
-    return `<div class="review-module" data-key="${key}">
+    const safeId = key.replace(/\./g, '-');
+    return `<div class="review-module" data-key="${escHtml(key)}">
       <div class="review-module-hdr">
-        <div class="review-module-title">${MODULE_LABELS[key]}${editedBadge}</div>
-        <div class="review-module-status" id="srm-status-${key}">${text ? 'Saved' : 'No content'}</div>
+        <div class="review-module-title">${escHtml(label)}${editedBadge}</div>
+        <div class="review-module-status" id="srm-status-${safeId}">${text ? 'Saved' : 'No content'}</div>
       </div>
-      <textarea class="review-module-textarea" id="srm-ta-${key}" oninput="markModuleDirty('${key}')">${escHtml(text)}</textarea>
+      <textarea class="review-module-textarea" id="srm-ta-${safeId}" oninput="markModuleDirty('${key}')">${escHtml(text)}</textarea>
       <div class="review-module-actions">
-        <button class="review-module-save" id="srm-save-${key}" onclick="saveStrategyModule('${key}')" disabled>Save</button>
+        <button class="review-module-save" id="srm-save-${safeId}" onclick="saveStrategyModule('${key}')" disabled>Save</button>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  let html = '';
+  if (isLegacy) {
+    // Legacy 8-module layout — flat list, week1 included as last entry
+    html = LEGACY_MODULE_ORDER.map(key => renderModule(key, LEGACY_MODULE_LABELS[key], modules[key] || '')).join('');
+  } else {
+    // New layout: 7 strategic modules at top, then 13 weekly post panels
+    html = STRATEGIC_MODULE_ORDER.map(key => renderModule(key, STRATEGIC_MODULE_LABELS[key], modules[key] || '')).join('');
+    const weekPosts = modules.week_posts || {};
+    const weeksWithContent = Object.keys(weekPosts).filter(k => weekPosts[k]).length;
+    html += `<div class="review-weekly-section" style="margin-top:8px;padding-top:18px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--font-display);font-size:22px;color:var(--text);margin-bottom:6px">Weekly Content</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">${weeksWithContent} of 13 weeks generated. Tap any week to expand and edit. Each week's 5 posts (1 Reel + 1 Gallery + 3 Photos) live in one block.</div>`;
+    for (let n = 1; n <= 13; n++) {
+      const key = 'week_posts.' + n;
+      const text = weekPosts[n] || '';
+      const safeId = key.replace(/\./g, '-');
+      const wasEdited = !!editedMap[key];
+      const editedBadge = wasEdited
+        ? ` <span class="module-edited-badge" title="Edited ${new Date(editedMap[key]).toLocaleString()}">Edited</span>`
+        : '';
+      const status = text ? (wasEdited ? 'Edited' : 'Saved') : 'Not generated';
+      html += `<details class="review-week-details" style="margin-bottom:10px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
+        <summary style="cursor:pointer;padding:12px 16px;font-family:var(--font-display);font-size:16px;color:var(--text);display:flex;justify-content:space-between;align-items:center">
+          <span>Week ${n}${editedBadge}</span>
+          <span class="review-module-status" id="srm-status-${safeId}" style="font-size:11px">${status}</span>
+        </summary>
+        <div style="padding:0 16px 16px">
+          <textarea class="review-module-textarea" id="srm-ta-${safeId}" oninput="markModuleDirty('${key}')">${escHtml(text)}</textarea>
+          <div class="review-module-actions">
+            <button class="review-module-save" id="srm-save-${safeId}" onclick="saveStrategyModule('${key}')" disabled>Save</button>
+          </div>
+        </div>
+      </details>`;
+    }
+    html += `</div>`;
+  }
+
+  body.innerHTML = html;
   document.getElementById('strategy-review-modal').classList.add('open');
 }
 
@@ -3095,18 +3148,25 @@ function closeStrategyReview() {
   SRM = { clientId: null, client: null, modules: {}, dirty: {} };
 }
 
+// Convert a moduleKey (which may contain dots like "week_posts.3") into a
+// DOM-safe id suffix. Dots are valid in HTML ids but break getElementById in
+// some legacy paths and CSS selectors, so we just hyphenate them everywhere.
+function srmIdFor(key) { return String(key || '').replace(/\./g, '-'); }
+
 function markModuleDirty(key) {
   SRM.dirty[key] = true;
-  const status = document.getElementById('srm-status-' + key);
-  const btn = document.getElementById('srm-save-' + key);
+  const id = srmIdFor(key);
+  const status = document.getElementById('srm-status-' + id);
+  const btn = document.getElementById('srm-save-' + id);
   if (status) { status.textContent = 'Unsaved'; status.className = 'review-module-status dirty'; }
   if (btn) btn.disabled = false;
 }
 
 async function saveStrategyModule(key) {
-  const ta = document.getElementById('srm-ta-' + key);
-  const status = document.getElementById('srm-status-' + key);
-  const btn = document.getElementById('srm-save-' + key);
+  const id = srmIdFor(key);
+  const ta = document.getElementById('srm-ta-' + id);
+  const status = document.getElementById('srm-status-' + id);
+  const btn = document.getElementById('srm-save-' + id);
   if (!ta || !SRM.clientId) return;
   const newText = ta.value;
   if (status) { status.textContent = 'Saving…'; status.className = 'review-module-status saving'; }
