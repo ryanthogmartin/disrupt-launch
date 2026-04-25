@@ -596,6 +596,31 @@ textarea { resize: vertical; min-height: 96px; }
 </div>
 
 <script>
+// ── ACCESS GUARD ────────────────────────────────────────────────────────────
+// Block direct access to launch.html. The buyer's only valid entry points are:
+//   ?setup=TOKEN     — Stripe-paid buyer with a setup link from email
+//   ?paid=1          — Stripe success_url landing (check-inbox screen)
+//   ?demo=true       — sales demo for prospects
+//   ?tour=true       — sales tour for prospects
+//   logged-in session — saved in localStorage (resume their intake or dashboard)
+// Anyone else (random visitor guessing the URL, ?tier=self alone, etc) is
+// bounced to the marketing landing page where they can pay properly. Closes
+// the legacy hole where ?tier=self showed an account-setup form without a
+// payment check.
+(function blockUnauthorizedAccess(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('setup'))           return; // Stripe buyer with setup token
+  if (params.get('paid') === '1')    return; // Stripe success redirect
+  if (params.get('demo') === 'true') return; // sales demo
+  if (params.get('tour') === 'true') return; // sales tour
+  try {
+    var s = JSON.parse(localStorage.getItem('disrupt_session') || 'null');
+    if (s && s.token) return; // logged-in user — resumeIfLoggedIn handles it
+  } catch(e) {}
+  // Not authorized to be here — bounce to the marketing/login page.
+  location.replace('/');
+})();
+
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 // After deploying your Cloudflare Worker, replace these two values:
 //   PROXY_URL   → your Worker URL, e.g. https://disrupt-proxy.YOUR-SUBDOMAIN.workers.dev
