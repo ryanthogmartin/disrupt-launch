@@ -283,6 +283,7 @@ textarea { resize: vertical; min-height: 96px; }
 </style>
 <link rel="stylesheet" href="tour.css">
 <script src="tour.js"></script>
+<script src="demo-data.js"></script>
 </head>
 <body>
 
@@ -2335,18 +2336,29 @@ function escAttr(s) {
   window.demoSkipToOutput = function() {
     // Populate global answers
     Object.assign(answers, DEMO_ANSWERS_DATA);
-    // Populate global generatedOutput
-    generatedOutput.goals       = DEMO_OUTPUT_DATA.goals;
-    generatedOutput.competitors = DEMO_OUTPUT_DATA.competitors;
-    generatedOutput.brand       = DEMO_OUTPUT_DATA.brand;
-    generatedOutput.personas    = DEMO_OUTPUT_DATA.personas;
-    generatedOutput.scripts     = DEMO_OUTPUT_DATA.scripts;
-    generatedOutput.preneed     = DEMO_OUTPUT_DATA.preneed;
-    generatedOutput.roadmap     = DEMO_OUTPUT_DATA.roadmap;
-    // Demo data was authored before the 13-week rebuild — wrap the old
-    // single-week sample as Week 1 of the new week_posts shape so demo mode
-    // still renders correctly. Real generations populate all 13.
-    generatedOutput.week_posts  = { 1: DEMO_OUTPUT_DATA.week1 };
+    // Populate global generatedOutput from the SHARED demo content (loaded
+    // by demo-data.js). Falls back to the legacy inline DEMO_OUTPUT_DATA for
+    // safety if the shared file didn't load.
+    const SHARED = window.DEMO_GENERATED_OUTPUT;
+    if (SHARED && SHARED.week_posts) {
+      generatedOutput.goals       = SHARED.goals;
+      generatedOutput.competitors = SHARED.competitors;
+      generatedOutput.brand       = SHARED.brand;
+      generatedOutput.personas    = SHARED.personas;
+      generatedOutput.scripts     = SHARED.scripts;
+      generatedOutput.preneed     = SHARED.preneed;
+      generatedOutput.roadmap     = SHARED.roadmap;
+      generatedOutput.week_posts  = SHARED.week_posts;
+    } else {
+      generatedOutput.goals       = DEMO_OUTPUT_DATA.goals;
+      generatedOutput.competitors = DEMO_OUTPUT_DATA.competitors;
+      generatedOutput.brand       = DEMO_OUTPUT_DATA.brand;
+      generatedOutput.personas    = DEMO_OUTPUT_DATA.personas;
+      generatedOutput.scripts     = DEMO_OUTPUT_DATA.scripts;
+      generatedOutput.preneed     = DEMO_OUTPUT_DATA.preneed;
+      generatedOutput.roadmap     = DEMO_OUTPUT_DATA.roadmap;
+      generatedOutput.week_posts  = { 1: DEMO_OUTPUT_DATA.week1 };
+    }
     // Show output screen
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('progress-wrap').style.display = 'none';

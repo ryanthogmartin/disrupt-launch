@@ -531,6 +531,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 </style>
 <link rel="stylesheet" href="tour.css">
 <script src="tour.js"></script>
+<script src="demo-data.js"></script>
 </head>
 <body>
 
@@ -1751,7 +1752,12 @@ function getGenOutput(moduleKey) {
 // hashtags, cross-post indicator, post type) so Execute tab can show full
 // detail on click.
 function getClientWeeks() {
-  if (isDemoClient()) return WEEKS;
+  // Demo client used to short-circuit to the legacy WEEKS const, but the
+  // shared demo-data.js now injects _strategy_generated_output into demo
+  // SESSION so the regular parser path renders the new 13-week × 5-post
+  // structure. Fall back to WEEKS only if the shared demo data failed to
+  // load (defensive, shouldn't happen in production).
+  if (isDemoClient() && !window.DEMO_GENERATED_OUTPUT) return WEEKS;
   if (SESSION._cachedClientWeeks) return SESSION._cachedClientWeeks;
 
   // Pull weekly themes from the roadmap module (now overview-only)
@@ -2045,7 +2051,11 @@ function buildPlaceholderWeeks() {
 // inspirational copy, not a contract; parsing it has burned us by grabbing
 // 12-month numbers as 90-day targets. Use it only as a secondary signal.
 function getClientTargets() {
-  if (isDemoClient()) {
+  // Demo client used to short-circuit to fixed numbers. Now that demo
+  // SESSION carries q5_5/q2_8/q2_5 in intake_answers, the same intake-based
+  // calc runs for demo and produces meaningful Heritage targets. Fall back
+  // only if demo-data.js failed to load.
+  if (isDemoClient() && !window.DEMO_GENERATED_OUTPUT) {
     return { casesTarget: 27, reviewsTarget: 100, reviewsBaseline: 85, preneedTarget: 6 };
   }
   if (SESSION._cachedClientTargets) return SESSION._cachedClientTargets;
@@ -3408,7 +3418,25 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
     role: 'client',
     start_date: '2026-03-28',
     theme: 'light',
-    last_login: new Date().toISOString()
+    last_login: new Date().toISOString(),
+    // Inject the shared demo content (loaded by demo-data.js) so the
+    // dashboard renders the new 13-week × 5-post structure instead of
+    // falling back to the legacy hardcoded "Heritage Adam/Maddison"
+    // blocks. q5_5/q2_8 etc. drive the scorecard targets too.
+    intake_answers: {
+      _intake_complete: true,
+      _strategy_released: true,
+      _tier: 'self',
+      _generated_at: '2026-03-28T10:00:00Z',
+      _strategy_generated_output: window.DEMO_GENERATED_OUTPUT || {},
+      q1_1: DEMO_BUSINESS,
+      q1_2: 'Franklin, Pennsylvania and surrounding Venango County',
+      q2_4: '111 calls per year',
+      q2_5: '70% at-need / 30% pre-need',
+      q2_6: '$6,700 average',
+      q2_8: '40 additional cases per year',
+      q5_5: '85 reviews, 5.0 stars',
+    },
   };
 
   // Override loadDashboardData to inject demo data instead of hitting Supabase
