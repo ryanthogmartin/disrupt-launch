@@ -2208,7 +2208,11 @@ function formatScripts(text) {
     const lines = block.trim().split('\n');
     const titleLine = lines[0];
     if (/^SCRIPT\s+\d+:/i.test(titleLine)) {
-      const sections = block.split(/\n(?=(PLATFORM|RUNTIME|PERSONA TARGET|HOOK|PROBLEM|CREDIBILITY|PROOF|CTA|DIRECTOR NOTES)\s*[:(])/);
+      // Non-capturing group — capturing groups in split() inject the
+      // captured text as separate array elements, which renders each
+      // section header twice (once as a phantom section, once as the real
+      // labeled section).
+      const sections = block.split(/\n(?=(?:PLATFORM|RUNTIME|PERSONA TARGET|SOURCE|HOOK|PROBLEM|CREDIBILITY|PROOF|CTA|DIRECTOR NOTES)\s*[:(])/);
       let cardHtml = '<div class="out-card" style="margin-bottom:20px;">';
       cardHtml += '<div class="out-card-title" style="color:var(--green);font-size:22px;margin-bottom:16px;">' + escHtml(titleLine) + '</div>';
       sections.slice(1).forEach(sec => {
