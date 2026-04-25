@@ -1161,9 +1161,14 @@ function buildQuestion(q) {
     }).join('') + '</div>';
   } else if (q.type === 'rating') {
     const ratings = val || {};
-    inputHtml = `<table class="rating-table"><thead><tr>
+    const ratingHint = `<div class="rating-scale-hint" style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+      <strong style="color:var(--text)">Scale:</strong> 1 = doesn't drive their decision · 3 = somewhat important · 5 = the strongest driver
+    </div>`;
+    const headerLabels = ['1', '2', '3', '4', '5'];
+    const headerSubtitles = { 1: 'Least', 5: 'Most' };
+    inputHtml = ratingHint + `<table class="rating-table"><thead><tr>
       <th class="rating-th">Trigger</th>
-      ${[1,2,3,4,5].map(n => `<th class="rating-th">${n}</th>`).join('')}
+      ${headerLabels.map(n => `<th class="rating-th">${n}${headerSubtitles[n] ? '<div style="font-size:9px;color:var(--muted);font-weight:400;letter-spacing:1px;margin-top:2px">' + headerSubtitles[n] + '</div>' : ''}</th>`).join('')}
     </tr></thead><tbody>
     ${q.items.map(item => {
       const r = ratings[item] || 0;
