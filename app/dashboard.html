@@ -1425,15 +1425,17 @@ function renderExecute(weekNum) {
       ? `<button class="post-expand-btn" data-detail="${detailId}" onclick="event.stopPropagation();togglePostDetail('${detailId}',this);" style="background:transparent;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:5px;cursor:pointer;font-size:13px;flex:none;margin-left:8px" title="View full post detail">▾</button>`
       : '';
     const detailBlock = hasDetail
-      ? `<div class="post-detail" id="${detailId}" style="display:none;margin:12px 0 4px;padding:14px 16px;background:var(--green-sub2,rgba(125,196,34,0.08));border-radius:6px;border-left:3px solid var(--green)">
-          ${post.visual ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Visual Direction</span><div style="font-size:13px;color:var(--text);line-height:1.55">${escHtml(post.visual)}</div></div>` : ''}
-          ${post.caption ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Caption — Copy &amp; Paste</span><div style="font-size:13px;color:var(--text);line-height:1.6;background:#fff;border:1px solid var(--border);border-radius:4px;padding:10px 12px;white-space:pre-wrap">${escHtml(post.caption)}</div><button onclick="event.stopPropagation();navigator.clipboard.writeText(${JSON.stringify(post.caption)});this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy caption',1400)" style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer">Copy caption</button></div>` : ''}
-          ${post.hashtags ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Hashtags</span><div style="font-size:13px;color:var(--text)">${escHtml(post.hashtags)}</div></div>` : ''}
-          <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;margin-top:6px">
-            ${post.bestTime ? `<span>📅 ${escHtml(post.bestTime)}</span>` : ''}
-            ${post.crosspost ? `<span>📲 IG cross-post: ${escHtml(post.crosspost)}</span>` : ''}
-          </div>
-        </div>`
+      ? (function(){
+          const captionId = detailId + '-cap';
+          return `<div class="post-detail" id="${detailId}" style="display:none;margin:12px 0 4px;padding:14px 16px;background:var(--green-sub2,rgba(125,196,34,0.08));border-radius:6px;border-left:3px solid var(--green)">
+            ${post.visual ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Visual Direction</span><div style="font-size:13px;color:var(--text);line-height:1.55">${escHtml(post.visual)}</div></div>` : ''}
+            ${post.caption ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Caption — Copy &amp; Paste</span><div id="${captionId}" style="font-size:13px;color:var(--text);line-height:1.6;background:#fff;border:1px solid var(--border);border-radius:4px;padding:10px 12px;white-space:pre-wrap">${escHtml(post.caption)}</div><button onclick="event.stopPropagation();copyPostCaption('${captionId}',this)" style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer">Copy caption</button></div>` : ''}
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;margin-top:6px">
+              ${post.bestTime ? `<span>📅 ${escHtml(post.bestTime)}</span>` : ''}
+              ${post.crosspost ? `<span>📲 IG cross-post: ${escHtml(post.crosspost)}</span>` : ''}
+            </div>
+          </div>`;
+        })()
       : '';
     return `<div class="task-item ${cls}" onclick="cycleTask(${weekNum},${i})" style="align-items:flex-start">
       <div class="task-check">${chk}</div>
@@ -1919,6 +1921,24 @@ function togglePostDetail(detailId, btn) {
   const isOpen = el.style.display !== 'none';
   el.style.display = isOpen ? 'none' : 'block';
   if (btn) btn.textContent = isOpen ? '▾' : '▴';
+}
+
+// Copy a caption to the clipboard by reading the rendered DOM (avoids
+// embedding raw caption text in inline onclick — that broke the HTML
+// parser when captions contained quotes/newlines/etc).
+function copyPostCaption(captionElId, btn) {
+  const el = document.getElementById(captionElId);
+  if (!el) return;
+  const text = el.innerText || el.textContent || '';
+  try {
+    navigator.clipboard.writeText(text);
+    if (btn) {
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = 'Copy caption'; }, 1400);
+    }
+  } catch (e) {
+    if (btn) btn.textContent = 'Press Cmd+C to copy';
+  }
 }
 
 // Find the best matching script for a given week's video task. Strategy:

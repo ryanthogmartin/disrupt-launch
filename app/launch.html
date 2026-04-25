@@ -1694,35 +1694,37 @@ async function generateScripts(arg) {
     '\n\n==================================================',
     '\nCUSTOMER PERSONAS (target these specific humans with their specific winning messages):\n', input.personas || '[not available]',
     '\n\n==================================================',
-    '\nVIDEO POSTS ACROSS THE 13-WEEK PLAN (each line is one video — pick the most strategically important to script):\n', videoSummary || '[not available]',
+    '\nVIDEO POSTS ACROSS THE 13-WEEK PLAN (one Reel per week — POST 2 each week — write one script for each):\n', videoSummary || '[not available]',
     '\n\n==================================================',
     '\n90-DAY ROADMAP OVERVIEW (pillars, platform strategy, weekly themes):\n', input.roadmap || '[not available]',
     '\n\n==================================================',
-    '\n\nYour job: produce production-ready video / Reel scripts for the most important video posts across the 13-week plan. Every post is built for Facebook (and cross-posted to Instagram Reels where applicable). Do not invent generic themes — tie every script to a specific video listed above.',
-    '\n\nRULES:',
-    '\n1. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
-    '\n2. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER words verbatim where natural.',
-    '\n3. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
-    '\n4. Spread coverage across the 13 weeks — not all from early weeks. 1-2 scripts per quarter (early, mid, late) plus 2 evergreen scripts (one per top message pillar).',
-    '\n5. Minimum 6 scripts. Maximum 8. Don\'t pad. Quality over quantity.',
-    '\n\nFORMAT EACH SCRIPT EXACTLY (use these ALL-CAPS headers verbatim, no variations):',
-    '\n\nSCRIPT {N}: [Title — tied to the source post or pillar]',
-    '\nPLATFORM: [Facebook / Facebook Reel — the latter for shorter vertical content. Default to Facebook.]',
-    '\nRUNTIME: [Target seconds — 60-90 for long-form Facebook, 30-60 for Reels]',
-    '\nPERSONA TARGET: [Which persona — use the persona\'s name from the Personas module]',
-    '\nSOURCE: [Which post/theme this script is for — e.g. "Week 3 Post 2 (Reel)" or "Evergreen — Pillar 1"]',
-    '\n\nHOOK (0-3 sec): [Word for word in the client\'s brand voice. Pattern interrupt. No slow intros, no "Hi I\'m ___".]',
-    '\n\nPROBLEM (3-15 sec): [Word for word. The specific market truth or persona-specific pain point. Use the persona\'s TRUST TRIGGER language.]',
-    '\n\nCREDIBILITY (15-25 sec): [Word for word. Why this funeral home specifically — named staff, specific asset, specific differentiator from the intake.]',
-    '\n\nPROOF (25-40 sec): [Word for word. A specific story, fact, or operational detail pulled from the intake.]',
-    '\n\nCTA (final 5 sec): [Word for word. One clear action, in the brand voice, tied to the emotional moment. Consider echoing the persona\'s WINNING MESSAGE.]',
-    '\n\nDIRECTOR NOTES: [2-3 sentences specific to THIS client — their actual location, the named staff member on camera, what B-roll to grab, whether to use the real building.]',
-    '\n\n---\n\nNumber scripts SCRIPT 1: through SCRIPT N: sequentially. No headers, no preamble, just the scripts.',
+    '\n\nYour job: produce production-ready Reel scripts for ALL 13 Reels — one per week. Every Reel is a Facebook post (cross-posted to Instagram Reels). Do not invent generic themes — tie every script to the specific Reel listed for that week above.',
+    '\n\n=== HARD RULES ===',
+    '\n1. EXACTLY 13 scripts — one per week (Week 1 through Week 13). Never fewer, never more.',
+    '\n2. EVERY script MUST include all 6 sections: HOOK, PROBLEM, CREDIBILITY, PROOF, CTA, DIRECTOR NOTES. Skipping any section is forbidden.',
+    '\n3. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
+    '\n4. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER language verbatim where natural.',
+    '\n5. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
+    '\n6. Keep beats TIGHT — 1-3 sentences each. The full 6-section script should land at ~300-400 words total. We need all 13 to fit, so don\'t over-write any one script.',
+    '\n7. SOURCE: must be exactly "Week N Post 2 (Reel)" where N is the week number — so the dashboard can link each Reel task to its script.',
+    '\n\n=== FORMAT EACH SCRIPT EXACTLY (use these labels VERBATIM) ===',
+    '\n\nSCRIPT {N}: [Title — short, evocative, tied to the week\'s Reel concept]',
+    '\nPLATFORM: Facebook Reel',
+    '\nRUNTIME: [30-60s — pick within range]',
+    '\nPERSONA TARGET: [Persona name from Personas module]',
+    '\nSOURCE: Week {N} Post 2 (Reel)',
+    '\n\nHOOK (0-3 sec): [1-2 sentences. Pattern interrupt. No slow intros, no "Hi I\'m ___".]',
+    '\n\nPROBLEM (3-15 sec): [1-3 sentences. The specific market truth or persona pain. Use the persona\'s TRUST TRIGGER language.]',
+    '\n\nCREDIBILITY (15-25 sec): [1-3 sentences. Why this funeral home — named staff, specific asset, specific differentiator from the intake.]',
+    '\n\nPROOF (25-40 sec): [1-3 sentences. A specific story, fact, or operational detail pulled from the intake.]',
+    '\n\nCTA (final 5 sec): [1-2 sentences. One clear action, in the brand voice, echoing the persona\'s WINNING MESSAGE where natural.]',
+    '\n\nDIRECTOR NOTES: [1-2 sentences. Specific to THIS client — actual location, named staff member on camera, what B-roll to grab.]',
+    '\n\n---\n\nReturn SCRIPT 1: through SCRIPT 13: in order. No preamble. No closing. No evergreen scripts. EXACTLY 13.',
   ].join('');
 
-  // 6-8 scripts at ~600 tokens each = ~5000 output tokens. 6000 cap leaves
-  // headroom without bloating the request beyond Cloudflare's origin timeout.
-  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 6000 });
+  // 13 scripts × ~400 tokens each = ~5200 output tokens. 8000 cap leaves
+  // headroom for the AI to occasionally over-run on a beat.
+  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 8000 });
 }
 
 // Compact video-only summary of the 13-week × 5-post content plan, formatted
@@ -1880,8 +1882,7 @@ async function generateWeekPosts(ctx, weekNum, weekTheme) {
     '\nPOST [N]',
     '\nPOST TYPE: [the exact type assigned to this slot — Photo, Reel, or Facebook Gallery]',
     '\nVISUAL DIRECTION: [Precise instruction — who to film/photograph, where, what they should be doing or saying. Specific enough that someone with no marketing experience can execute. For Reels: include the exact opening line on-camera (first 3 seconds). For Photos: describe the shot — subject, location, angle, what\'s in frame. For Galleries: list the 5-10 specific photos in order.]',
-    '\nCAPTION: [Full ready-to-publish Facebook caption in the client\'s brand voice. Hook in the first line — pattern interrupt or specific claim. 3-5 sentences. End with a clear CTA appropriate to the post type. URLs/links are fine — Facebook allows them in-caption.]',
-    '\nHASHTAGS: [Maximum 2 hashtags. Only local or branded. Leave blank if none make sense — Facebook hashtags are mostly dead.]',
+    '\nCAPTION: [Full ready-to-publish Facebook caption in the client\'s brand voice. Hook in the first line — pattern interrupt or specific claim. 3-5 sentences. End with a clear CTA appropriate to the post type. URLs/links are fine — Facebook allows them in-caption. NO hashtags in the caption.]',
     '\nCROSS-POST: [Yes / Yes (re-format as IG Reel) / No (Facebook only)] — Reels = Yes always. Galleries = Yes (cap at 10 photos for IG). Photo posts with text-heavy story captions = consider No.',
     '\nBEST TIME: [Day of week + time, e.g., "Tuesday 7-9 PM"]',
     '\n\n=== STRATEGIC ANGLES (one per slot, in order) ===\n',
@@ -2126,7 +2127,7 @@ function formatWeek1(text) {
       }
       let cardHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ' + borderColor + ';border-radius:4px;padding:16px;overflow:hidden;">';
       cardHtml += '<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:' + borderColor + ';margin-bottom:12px;">' + platformLabel + '</div>';
-      const fields = ['POST TYPE','VISUAL DIRECTION','CAPTION','HASHTAGS','BEST TIME'];
+      const fields = ['POST TYPE','VISUAL DIRECTION','CAPTION','BEST TIME'];
       let remaining = lines.slice(1).join('\n');
       fields.forEach(field => {
         const regex = new RegExp(field + ':\\s*([\\s\\S]*?)(?=' + fields.filter(f=>f!==field).map(f=>f+':').join('|') + '|$)');
