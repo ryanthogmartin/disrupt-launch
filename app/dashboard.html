@@ -1403,26 +1403,33 @@ function renderExecute(weekNum) {
     const state = tasks[i]||0;
     const cls = state===2?'done':state===1?'in-progress':'';
     const chk = state===2?'✓':state===1?'→':'';
+    // Look up the matching script for this task. If found, render an inline
+    // "Open Script #N" link the buyer can click to read the script. The link
+    // stops propagation so it doesn't also cycle the task state.
+    const linkedScript = getScriptForTask(weekNum, txt);
+    const scriptLink = linkedScript
+      ? `<a href="#" class="task-script-link" onclick="event.stopPropagation();openScriptForTask(${linkedScript.num});return false;" style="display:inline-block;margin-top:6px;font-size:11px;color:var(--pink);text-decoration:none;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase">📹 Script #${linkedScript.num} — ${escHtml(linkedScript.title.slice(0,46))}${linkedScript.title.length>46?'…':''} →</a>`
+      : '';
     return `<div class="task-item ${cls}" onclick="cycleTask(${weekNum},${i})">
       <div class="task-check">${chk}</div>
-      <div style="flex:1"><div class="task-text">${escHtml(txt)}</div><div class="task-state-label">${LABELS[state]}</div></div>
+      <div style="flex:1"><div class="task-text">${escHtml(txt)}</div><div class="task-state-label">${LABELS[state]}</div>${scriptLink}</div>
     </div>`;
   }).join('');
 
   // Total tasks for this week — variable now (lifted the 4-task cap)
   const totalTasks = wk.tasks.length;
 
-  // Video Scripts library — same on EVERY week. Lists scripts that haven't
-  // been recorded yet. Buyer checks each off as they record. Once checked,
-  // the script falls off the list (state persists in localStorage).
+  // Video Scripts library — global, same on every week. Lists ONLY scripts
+  // that haven't been recorded yet. Marking a video task done auto-records
+  // its linked script (cycleTask does the sync), so scripts fall off the
+  // list as the buyer ships their weekly video plan.
   const allScripts = getAllVideoScripts();
   const unrecorded = allScripts.filter(s => !isScriptRecorded(s.num));
   let scriptsBlock = '';
   if (allScripts.length > 0) {
-    const recordedCount = allScripts.length - unrecorded.length;
     scriptsBlock = `<div class="week-scripts-extra" style="margin-top:24px">
       <span class="week-section-label">Video Scripts to Record · ${unrecorded.length} of ${allScripts.length} remaining</span>
-      <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5">Your full library of video scripts. Record at your own pace. Check each one off when you've shot it — checked scripts disappear from the list.</div>
+      <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5">Your full library of video scripts. Tap a script to open it in Strategy. Marking a weekly video task as Done auto-removes the linked script — or check it manually here.</div>
       ${unrecorded.length === 0
         ? `<div class="no-wins">All ${allScripts.length} scripts recorded. Great work.</div>`
         : `<div class="task-list">` + unrecorded.map(s =>
@@ -1612,6 +1619,21 @@ async function cycleTask(weekNum, taskIdx) {
   const cur = SESSION.weekProgress[weekNum].tasks[taskIdx]||0;
   const next = cur===0?1:cur===1?2:0;
   SESSION.weekProgress[weekNum].tasks[taskIdx] = next;
+
+  // Sync linked video script: marking the task done auto-records the script
+  // so it falls off the "Video Scripts to Record" library. Cycling back from
+  // done un-records, so accidental clicks are recoverable.
+  try {
+    const wks = getClientWeeks();
+    const taskText = wks[weekNum-1] && wks[weekNum-1].tasks ? wks[weekNum-1].tasks[taskIdx] : '';
+    const linked = getScriptForTask(weekNum, taskText);
+    if (linked) {
+      const k = scriptRecordedKey(linked.num);
+      if (next === 2) localStorage.setItem(k, '1');
+      else if (cur === 2) localStorage.removeItem(k);
+    }
+  } catch(e) { console.warn('script-sync failed:', e); }
+
   renderExecute(weekNum);
   await saveWeekProgress(weekNum);
   toast('Saved','success');
@@ -1792,6 +1814,47 @@ function getAllVideoScripts() {
   } catch (e) { console.warn('getAllVideoScripts parse failed:', e); }
   SESSION._cachedAllScripts = list;
   return list;
+}
+
+// Heuristic: does this task call for a video?
+function taskIsVideo(taskText) {
+  return /\b(video|reel|film|shoot|recording|tiktok|youtube)\b/i.test(taskText || '');
+}
+
+// Find the best matching script for a given week's video task. Strategy:
+//   1. Filter all scripts to those whose SOURCE: explicitly mentions Week N.
+//   2. If multiple Week-N scripts, pick the one whose title shares the most
+//      non-trivial words with the task text.
+//   3. If only one, return it. If none, return null.
+// Memoized per (weekNum, taskText) per session render.
+function getScriptForTask(weekNum, taskText) {
+  if (!taskText || !taskIsVideo(taskText)) return null;
+  if (!SESSION._scriptMatchCache) SESSION._scriptMatchCache = {};
+  const cacheKey = weekNum + '::' + taskText;
+  if (cacheKey in SESSION._scriptMatchCache) return SESSION._scriptMatchCache[cacheKey];
+
+  const all = getAllVideoScripts();
+  const weekScripts = all.filter(s => {
+    const wm = /week\s*(\d+)/i.exec(s.source || '');
+    return wm && parseInt(wm[1], 10) === weekNum;
+  });
+  let pick = null;
+  if (weekScripts.length === 1) {
+    pick = weekScripts[0];
+  } else if (weekScripts.length > 1) {
+    const STOP = new Set(['the','and','for','with','from','your','our','their','this','that','will','what','when','where','they','them','have','has','had','can','out','are','was','were','reel','video','post','photo','facebook','instagram','tiktok','film','shoot']);
+    const tok = s => (s || '').toLowerCase().split(/\W+/).filter(t => t.length > 3 && !STOP.has(t));
+    const taskTokens = new Set(tok(taskText));
+    let best = weekScripts[0], bestScore = -1;
+    weekScripts.forEach(s => {
+      const titleTokens = tok(s.title);
+      const score = titleTokens.reduce((sum, t) => sum + (taskTokens.has(t) ? 1 : 0), 0);
+      if (score > bestScore) { best = s; bestScore = score; }
+    });
+    pick = best;
+  }
+  SESSION._scriptMatchCache[cacheKey] = pick;
+  return pick;
 }
 
 // LocalStorage flag for "this script has been recorded" — keyed per
