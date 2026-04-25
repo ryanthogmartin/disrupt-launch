@@ -1816,10 +1816,18 @@ function getClientWeeks() {
 // Parse a single week's text (one entry from week_posts) into structured
 // post objects. Each "POST N" block has type / visual direction / caption /
 // hashtags / cross-post / best time fields. Returns an array of those.
+//
+// Defensive: if the AI ignored the prompt and returned roadmap-style content
+// (REVIEW GENERATION STRATEGY / 90-DAY MILESTONES / etc) instead of POST
+// blocks, return empty so the renderer falls to the "still loading" placeholder
+// instead of trying to render that garbage as tasks.
 function parseWeekPosts(weekText) {
   if (!weekText || typeof weekText !== 'string') return [];
+  // Bail if the content looks like roadmap output the AI mis-routed here.
+  if (/^\s*(REVIEW GENERATION STRATEGY|90-DAY MILESTONES|CONTENT STRATEGY OVERVIEW|CONTENT PILLARS|PLATFORM STRATEGY|GROWTH TARGETS)\b/im.test(weekText)) {
+    return [];
+  }
   const cleaned = weekText.replace(/^[#*\->\s]+/gm, '');
-  // Each post block starts with "POST N" or "POST N:"
   const blocks = splitRepeating(cleaned, /^post\s*\d+\s*:?\s*$|^post\s*\d+\s*[:\-—–]/i);
   return blocks.map((b, idx) => {
     const numMatch = /post\s*(\d+)/i.exec(b.header);

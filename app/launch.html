@@ -1816,47 +1816,77 @@ async function generateRoadmap(ctx) {
 
 // ── RENDER OUTPUT ────────────────────────────────────────────────────────────
 
-// Per-week post angles. Week 1 establishes voice + differentiator; subsequent
-// weeks rotate through pillars, social proof, education, pre-need, community,
-// veterans, etc. This is the "narrative spine" — each week has a strategic
-// purpose so 13 weeks add up to a complete brand-building sequence.
+// ─── WEEKLY CONTENT RULES (locked) ────────────────────────────────────────
+// 1. EXACTLY 5 posts per week, every week (Weeks 1–13).
+// 2. POST MIX is FIXED: 1 Reel (video) + 4 image-based posts. Image-based =
+//    Photo OR Facebook Gallery. NEVER text-only.
+// 3. Slot order is fixed:
+//      POST 1: Photo
+//      POST 2: Reel               (THE one video of the week)
+//      POST 3: Facebook Gallery   (multi-photo, 5-10 images, rectangular OK)
+//      POST 4: Photo
+//      POST 5: Photo
+// 4. NO text-only posts. Every post must have a visual element.
+// 5. Facebook-first. Cross-post to Instagram via Meta Business Suite.
+// 6. "Facebook Gallery" not "Instagram Carousel". Always.
+//
+// WEEK_POST_ANGLES holds the strategic intent per slot per week. The slot
+// order matches the post-type order above (so POST 2 — the Reel — always
+// gets the angle most suited to a video format).
 const WEEK_POST_ANGLES = {
-  1:  ['Introduce the business + person behind it. Build immediate humanity.', 'Lead with the biggest operational differentiator. Make competitor weakness obvious without naming them.', 'Address the #1 family fear directly. Show how this home eliminates it.', 'Community proof. Use a real local tie or sponsorship.', 'Pre-need awareness. Plant the seed. Speak to the pre-planner persona.'],
-  2:  ['Aftercare proof — show what happens AFTER the service. Tangible care, not a brochure.', 'Lean into the named on-camera staff. Show their face + voice. Build recognition.', 'Educate on a service families assume they understand but don\'t.', 'A real (anonymized) family story that demonstrates the brand promise in action.', 'Soft pre-need CTA — invite to a no-pressure conversation.'],
-  3:  ['The 30-day card or aftercare program. Concrete proof of long-term care.', 'Demystify pricing transparency. Address the cost-shame fear directly.', 'Behind-the-scenes: a moment most homes hide that this one is proud of.', 'Veterans services or a specific service segment that\'s undersold.', 'Pre-need for couples — different angle from the solo pre-planner.'],
-  4:  ['Compete without naming names. Position cheaper options as a risk families don\'t see coming.', 'Owner/director directly addresses what makes the experience different.', 'Hyper-local content — sponsorship, parade, charity, community event.', 'Educational carousel: questions every family should ask any funeral home.', 'A grief-program post that shows aftercare is a relationship, not a transaction.'],
-  5:  ['Cremation education — demystify options, position as guide not salesperson.', 'On-camera director talks about a meaningful moment from the previous month.', 'Facility tour highlight — feature the most underrated room or detail.', 'Family testimonial (with permission) — short, specific, emotional.', 'Pre-need ROI — frame planning as a gift to family, not a sales pitch.'],
-  6:  ['Legacy content — the years in business as proof of staying power, not nostalgia.', 'Address an objection or hesitation that comes up in arrangement conferences.', 'Educational post — what most families wish they\'d known before choosing.', 'Community involvement spotlight — a person, partner, or program.', 'Pre-need open house teaser — even if not running one yet, plant the idea.'],
-  7:  ['Pre-need without the pressure — ROI, peace of mind, control over the story.', 'On-camera Q&A — answer the question staff hear most often.', 'Specialty service spotlight — what nobody else in market does this way.', 'Community review highlight — share a recent 5-star review with a thank-you.', 'Real story (anonymized) of a family who was glad they planned ahead.'],
-  8:  ['A first-call story — what happens when families dial at 2 AM.', 'Educational post about something families regularly get wrong about funerals.', 'Behind-the-scenes content — staff prepping, setting up, doing the work.', 'Brand promise in plain language — what every family gets, every time.', 'Photo gallery from a recent event — community, grief support, or service.'],
-  9:  ['Veterans services — specific, dignified, not generic. Speak to veteran families directly.', 'Owner addresses a hard truth — what most homes won\'t say out loud.', 'A staff member spotlight — face, name, role, story.', 'Pre-need targeted at adult children planning for parents.', 'Educational post — paperwork, checklists, things families wish they\'d had.'],
-  10: ['Premium positioning — own the price without apology if they\'re premium-priced.', 'Compare apples-to-apples — what a premium experience actually includes.', 'Real client (anonymized) explaining why they chose this home over others.', 'Community partnership or sponsorship recap.', 'Pre-need targeted at couples who recently lost a friend.'],
-  11: ['Grief support program — proof of community presence beyond services.', 'Director shares a personal moment — a family who changed how they think about the work.', 'Educational post — a specific service nobody asks about but should.', 'Cremation positioning — how this home treats cremation differently.', 'Pre-need for the organized planner persona — checklists, control, peace.'],
-  12: ['Facility differentiator — chapel size, garden, or unique room nobody else has.', 'On-camera testimonial-style content — staff or family.', 'Educational post — common myth busted with specific facts.', 'Community recap — events, partnerships, or programs over the past quarter.', 'Pre-need angle — a specific scenario that makes planning feel essential.'],
-  13: ['Forward-looking — what this home is building next. Momentum, not closure.', 'Quarter recap — best moments, biggest wins, real engagement.', 'Director thanks the community by name — local pride, brand humility.', 'Pre-need final push — an offer or open house if appropriate.', 'A teaser for next quarter — what families can expect to see.'],
+  1:  ['Introduce the business + person behind it. Photo of the building or owner. Build immediate humanity.', 'Reel — owner walks the building/space and lays out the biggest operational differentiator on camera. Make competitor weakness obvious without naming them.', 'Facebook Gallery (5-10 photos) — show what the facility actually looks like inside. Chapel, gathering rooms, reception space, signature details.', 'Address the #1 family fear directly. Photo of staff or interior detail that proves the home eliminates it.', 'Pre-need awareness photo. Speak to the pre-planner persona — peace of mind, gift to family.'],
+  2:  ['Photo of an aftercare moment — a hand-written card, a remembrance event detail. Tangible care, not a brochure.', 'Reel — named on-camera staff member shares a moment from the previous month. Build face recognition.', 'Facebook Gallery — most recent grief event or aftercare program (butterfly release, paint class, holiday remembrance).', 'Education photo — a service families assume they understand but don\'t. Caption does the teaching.', 'Soft pre-need photo + invite. No pressure. Open door, not a pitch.'],
+  3:  ['Photo of the 30-day or 90-day aftercare touch — actual letter, card, or gift. Concrete proof of long-term care.', 'Reel — director addresses cost transparency directly. Demystify pricing, reduce cost-shame.', 'Facebook Gallery — behind-the-scenes preparation moments most homes hide and this one is proud of.', 'Veterans services photo. Specific service segment that\'s undersold.', 'Pre-need for couples photo. Different angle from solo pre-planner.'],
+  4:  ['Photo of a competitor risk visualized — without naming names. Position cheaper options as a risk families don\'t see coming.', 'Reel — owner/director directly addresses what makes their experience different. Educational tone.', 'Facebook Gallery — hyper-local proof: sponsorship, parade, charity, community event, partner photos.', 'Educational photo — questions every family should ask any funeral home (carousel-style if needed).', 'Grief-program photo that shows aftercare is a relationship, not a transaction.'],
+  5:  ['Cremation education photo — clear signage or visual tour. Demystify options, position as guide.', 'Reel — director talks about a specific meaningful moment from the previous month. Story-led.', 'Facebook Gallery — facility tour highlight. The most underrated room or detail and what it means.', 'Family testimonial photo (with permission). Short, specific, emotional.', 'Pre-need ROI photo. Frame planning as a gift to family, not a sales pitch.'],
+  6:  ['Legacy photo — the years-in-business as proof of staying power. Throwback + recent investment photo.', 'Reel — director addresses an objection or hesitation that comes up in arrangement conferences.', 'Facebook Gallery — recent renovations, reinvestments, behind-the-scenes proof of staying power.', 'Educational photo — what most families wish they\'d known before choosing a home.', 'Community involvement photo spotlight — a person, partner, or program.'],
+  7:  ['Pre-need awareness photo — peace of mind, control over the story. ROI angle.', 'Reel — on-camera Q&A. Director answers the single question staff hear most often.', 'Facebook Gallery — specialty service spotlight. What nobody else in market does this way, in pictures.', 'Community review photo highlight. Recent 5-star review with public thank-you.', 'Real story photo (anonymized) of a family who was glad they planned ahead.'],
+  8:  ['Photo of the building lit at night — first-call story. What happens when families dial at 2 AM.', 'Reel — director tells the midnight call story (anonymized). Most human content of the quarter.', 'Facebook Gallery — staff prepping a service. Behind-the-scenes images families never see.', 'Brand promise in plain language. Photo + clear caption — what every family gets, every time.', 'Photo gallery from a recent event — community, grief support, or service moment.'],
+  9:  ['Photo of a flag ceremony or veteran tribute. Specific, dignified, not generic.', 'Reel — owner addresses a hard truth. What most homes won\'t say out loud.', 'Facebook Gallery — staff member spotlight. Face, name, role, multiple shots showing personality.', 'Pre-need photo targeted at adult children planning for parents. Different persona angle.', 'Educational photo — paperwork, checklists, things families wish they\'d had.'],
+  10: ['Premium positioning photo — facility detail (chandelier, chapel, architectural feature). Own the price without apology.', 'Reel — director compares apples-to-apples. What a premium experience actually includes.', 'Facebook Gallery — real client (anonymized) explaining why they chose this home over others, in scene-by-scene photos.', 'Community partnership or sponsorship recap photo.', 'Pre-need photo targeted at couples who recently lost a friend.'],
+  11: ['Grief support program photo. Proof of community presence beyond services.', 'Reel — director shares a personal moment. A family who changed how they think about the work.', 'Facebook Gallery — paint class, widow lunch, or grief support event in real moments.', 'Educational photo — a specific service nobody asks about but should.', 'Pre-need photo for the organized planner persona. Checklists, control, peace.'],
+  12: ['Photo of the facility differentiator — chapel size, garden, or unique room nobody else has.', 'Reel — on-camera testimonial-style content from staff or a family.', 'Facebook Gallery — chapel walkthrough or unique-feature spotlight in pictures.', 'Educational photo — common myth busted with specific facts.', 'Pre-need photo angle — a specific scenario that makes planning feel essential.'],
+  13: ['Forward-looking photo — what this home is building next. Momentum, not closure.', 'Reel — owner reflects on the quarter. Best moments, biggest wins, looking ahead.', 'Facebook Gallery — quarter recap. Best moments and best engagement from the past 90 days.', 'Photo + caption — director thanks the community by name. Local pride, brand humility.', 'Pre-need final push photo. An offer or open house if appropriate.'],
 };
+
+// Fixed post-type slots. Same for every week. NEVER changes.
+const POST_TYPE_SLOTS = ['Photo', 'Reel', 'Facebook Gallery', 'Photo', 'Photo'];
 
 // Generate 5 detailed Facebook posts for ONE week. Called 13 times in
 // parallel by the weekly_posts coordinator. Each post is ready-to-publish.
 async function generateWeekPosts(ctx, weekNum, weekTheme) {
   const angles = WEEK_POST_ANGLES[weekNum] || WEEK_POST_ANGLES[1];
+  const slotInstructions = POST_TYPE_SLOTS.map((type, i) =>
+    'POST ' + (i + 1) + ' — POST TYPE MUST BE "' + type + '" — Strategic angle: ' + angles[i]
+  ).join('\n');
+
   const prompt = [
     'CLIENT INTELLIGENCE:\n' + ctx,
-    '\n\nGenerate a complete WEEK ' + weekNum + ' Facebook content plan — exactly 5 posts.',
-    weekTheme ? ' This week\'s theme is: "' + weekTheme + '". Every post should reinforce this theme.' : '',
-    '\n\nALL POSTS ARE FACEBOOK POSTS. The buyer will cross-post to Instagram via Meta Business Suite — they don\'t need separate IG content. Build for Facebook.\n\n',
-    'For EACH of the 5 posts use EXACTLY this structure:\n\n',
-    'POST [N]\n',
-    'POST TYPE: [Reel / Video / Photo / Facebook Gallery / Text Post] — DO NOT use "Instagram Carousel" — use "Facebook Gallery" instead. A Facebook Gallery is a multi-photo post (up to 10 images, rectangular framing OK).\n',
-    'VISUAL DIRECTION: [Precise instruction — who to film/photograph, where, what they should be doing or saying. Specific enough that someone with no marketing experience can execute. For videos: include the exact opening line on-camera. For photos: describe the shot — subject, location, angle, what\'s in frame. For galleries: list the 5-7 specific photos to include in order.]\n',
-    'CAPTION: [Full ready-to-publish Facebook caption in the client\'s brand voice. Hook in the first line — pattern interrupt or specific claim. 3-5 sentences. End with a clear CTA appropriate to the post type. URLs/links are FINE — Facebook allows them in-caption.]\n',
-    'HASHTAGS: [Maximum 2 hashtags — only if they\'re local or branded. Facebook hashtags are mostly dead, so keep this minimal.]\n',
-    'CROSS-POST: [Yes / Yes (re-format as IG Reel) / No (Facebook only)] — Tell the buyer whether this post translates to Instagram cleanly. Reels = Yes always. Galleries = Yes (cap at 10 photos for IG). Text-heavy story posts = No.\n',
-    'BEST TIME: [Day of week + time, e.g., "Tuesday 7-9 PM"]\n\n',
-    '---\n\n',
-    'Use these 5 strategic angles for the 5 posts (in order):\n',
-    angles.map((a, i) => 'POST ' + (i + 1) + ': ' + a).join('\n'),
-    '\n\nReturn ONLY the 5 posts in the structure above. No preamble, no closing notes.',
+    '\n\n=== WEEK ' + weekNum + ' CONTENT PLAN — 5 POSTS ===',
+    weekTheme ? '\nThis week\'s theme: "' + weekTheme + '". Every post reinforces this theme.\n' : '\n',
+    '\n\n=== HARD RULES — DO NOT BREAK THESE ===',
+    '\n1. PLATFORM: ALL 5 posts are Facebook posts. The buyer will cross-post to Instagram via Meta Business Suite — DO NOT generate separate IG content.',
+    '\n2. POST TYPE MIX IS FIXED. The exact 5-post mix for this week MUST be:',
+    '\n   POST 1: Photo  (single image)',
+    '\n   POST 2: Reel   (vertical video, 30-60s — this is the ONE video of the week)',
+    '\n   POST 3: Facebook Gallery  (multi-photo album, 5-10 images, rectangular framing OK)',
+    '\n   POST 4: Photo  (single image)',
+    '\n   POST 5: Photo  (single image)',
+    '\n3. Exactly 1 Reel/video this week. Exactly 4 image-based posts (1 Gallery + 3 Photos).',
+    '\n4. NEVER use POST TYPE "Text Post". NEVER use "Video" alone — use "Reel" for the one video. NEVER use "Instagram Carousel" — use "Facebook Gallery" instead.',
+    '\n5. Every post MUST have a visual element. The VISUAL DIRECTION field is required and must describe a specific photo, video, or gallery — never "graphic with text" or "text overlay only".',
+    '\n6. Return ONLY the 5 posts in the structure below. No preamble. No closing notes. No "REVIEW GENERATION STRATEGY" or other roadmap sections — those belong in a different module.',
+    '\n\n=== STRUCTURE FOR EACH POST (use these field labels VERBATIM) ===',
+    '\nPOST [N]',
+    '\nPOST TYPE: [the exact type assigned to this slot — Photo, Reel, or Facebook Gallery]',
+    '\nVISUAL DIRECTION: [Precise instruction — who to film/photograph, where, what they should be doing or saying. Specific enough that someone with no marketing experience can execute. For Reels: include the exact opening line on-camera (first 3 seconds). For Photos: describe the shot — subject, location, angle, what\'s in frame. For Galleries: list the 5-10 specific photos in order.]',
+    '\nCAPTION: [Full ready-to-publish Facebook caption in the client\'s brand voice. Hook in the first line — pattern interrupt or specific claim. 3-5 sentences. End with a clear CTA appropriate to the post type. URLs/links are fine — Facebook allows them in-caption.]',
+    '\nHASHTAGS: [Maximum 2 hashtags. Only local or branded. Leave blank if none make sense — Facebook hashtags are mostly dead.]',
+    '\nCROSS-POST: [Yes / Yes (re-format as IG Reel) / No (Facebook only)] — Reels = Yes always. Galleries = Yes (cap at 10 photos for IG). Photo posts with text-heavy story captions = consider No.',
+    '\nBEST TIME: [Day of week + time, e.g., "Tuesday 7-9 PM"]',
+    '\n\n=== STRATEGIC ANGLES (one per slot, in order) ===\n',
+    slotInstructions,
+    '\n\n=== OUTPUT ===\nReturn ONLY POST 1 through POST 5 in the structure above. Nothing else.',
   ].join('');
   return callClaude(SYSTEM, prompt, { maxTokens: 4000 });
 }
