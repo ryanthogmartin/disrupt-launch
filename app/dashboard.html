@@ -1061,21 +1061,25 @@ function renderHome() {
   allWins.sort((a,b)=>b.week-a.week);
   const winsHtml = allWins.length ? allWins.map(w=>`<div class="win-item"><span class="win-week">Week ${w.week}</span><span class="win-text">${w.text}</span></div>`).join('') : '<div class="no-wins">Log your first win in the Execute tab.</div>';
 
-  // Week action cards
+  // Week action cards. Task counts are now per-week (variable) instead of
+  // always /4 — pulled from the parsed roadmap weeks.
   const prevWeek = curWeek > 1 ? curWeek - 1 : null;
   const prevWd = prevWeek ? (SESSION.weekProgress[prevWeek]||{tasks:[0,0,0,0]}) : null;
-  const prevDone = prevWd ? prevWd.tasks.filter(t=>t===2).length : 4;
-  const catchupHtml = prevWeek && prevDone < 4 ? `
+  const prevTotal = prevWeek ? (clientWeeks[prevWeek-1]?.tasks?.length || 1) : 0;
+  const prevDone = prevWd ? Math.min(prevWd.tasks.filter(t=>t===2).length, prevTotal) : prevTotal;
+  const prevPending = Math.max(0, prevTotal - prevDone);
+  const catchupHtml = prevWeek && prevDone < prevTotal ? `
     <div class="action-card catchup">
       <div class="action-card-label">Catch Up — Week ${prevWeek}</div>
       <div class="action-card-week">Week ${prevWeek}: ${escHtml(clientWeeks[prevWeek-1].theme)}</div>
-      <div class="action-card-theme">${4-prevDone} task${4-prevDone>1?'s':''} still pending from last week.</div>
-      <div class="action-card-tasks">${prevDone}/4 complete</div>
+      <div class="action-card-theme">${prevPending} task${prevPending>1?'s':''} still pending from last week.</div>
+      <div class="action-card-tasks">${prevDone}/${prevTotal} complete</div>
       <button class="action-btn amber" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${prevWeek})">Finish Week ${prevWeek} →</button>
     </div>` : '';
 
   const curWd = SESSION.weekProgress[curWeek] || {tasks:[0,0,0,0]};
-  const curDone = curWd.tasks.filter(t=>t===2).length;
+  const curTotal = clientWeeks[curWeek-1]?.tasks?.length || 1;
+  const curDone = Math.min(curWd.tasks.filter(t=>t===2).length, curTotal);
 
   document.getElementById('tab-home').innerHTML = `
     <div class="home-hero">
@@ -1119,7 +1123,7 @@ function renderHome() {
         <div class="action-card-label">Current Week</div>
         <div class="action-card-week">Week ${curWeek}: ${escHtml(clientWeeks[curWeek-1].theme)}</div>
         <div class="action-card-theme">${escHtml(clientWeeks[curWeek-1].focus)}</div>
-        <div class="action-card-tasks">${curDone}/4 tasks complete</div>
+        <div class="action-card-tasks">${curDone}/${curTotal} tasks complete</div>
         <button class="action-btn green" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${curWeek})">Go to Week ${curWeek} →</button>
       </div>
       ${catchupHtml || "<div class='action-card'><div class='action-card-label'>All Caught Up</div><div class='action-card-week'>No missed tasks</div><div class='action-card-theme'>You're current. Keep publishing.</div></div>"}
@@ -1369,12 +1373,13 @@ function renderExecute(weekNum) {
   const wk = clientWeeks[weekNum-1];
   const wd = SESSION.weekProgress[weekNum] || {tasks:[0,0,0,0],wins:''};
 
-  // Pill nav
+  // Pill nav. Each week's "complete" is now relative to its own task count.
   let pillsHtml = clientWeeks.map(w => {
     const wwd = SESSION.weekProgress[w.num] || {tasks:[0,0,0,0]};
-    const done = wwd.tasks.filter(t=>t===2).length;
-    const missed = w.num < curWeek && done < 4;
-    const complete = done===4;
+    const total = (w.tasks || []).length || 1;
+    const done = Math.min(wwd.tasks.filter(t=>t===2).length, total);
+    const missed = w.num < curWeek && done < total;
+    const complete = total > 0 && done === total;
     let cls = '';
     if(w.num===weekNum) cls='active';
     else if(complete) cls='complete';
@@ -1385,24 +1390,56 @@ function renderExecute(weekNum) {
 
   const isCurrent = weekNum===curWeek;
   const tasks = wd.tasks || [0,0,0,0];
-  const doneCt = tasks.filter(t=>t===2).length;
-  const progPct = Math.round((doneCt/4)*100);
+  // Cap doneCt at the actual task count for this week — if the user previously
+  // had 4 tasks marked done and we now show 3 tasks, doneCt should be 3 not 4.
+  const totalTasksForCalc = (wk.tasks || []).length || 1;
+  const doneCt = Math.min(tasks.filter(t=>t===2).length, totalTasksForCalc);
+  const progPct = Math.round((doneCt/totalTasksForCalc)*100);
 
   const STATES = [0,'In Progress',2];
   const LABELS = ['Not started','In Progress','Done'];
+
+  // Pull scripts that belong to this week so we can link video tasks to the
+  // specific script. We pop scripts off the list as we match them so each
+  // script gets surfaced exactly once.
+  const weekScripts = (getScriptsByWeek()[weekNum] || []).slice();
 
   let tasksHtml = wk.tasks.map((txt,i) => {
     const state = tasks[i]||0;
     const cls = state===2?'done':state===1?'in-progress':'';
     const chk = state===2?'✓':state===1?'→':'';
+    let scriptLink = '';
+    if (taskIsVideo(txt) && weekScripts.length > 0) {
+      const s = weekScripts.shift();
+      // The Strategy tab Scripts section has element ids like script-card-N
+      // for jumping. Falling back to the section anchor if id not present.
+      scriptLink = `<a href="#" onclick="event.stopPropagation();openScriptForTask(${s.num});return false;" class="task-script-link">📹 Open Script #${s.num}: ${escHtml(s.title.slice(0,40))}${s.title.length>40?'…':''} →</a>`;
+    }
     return `<div class="task-item ${cls}" onclick="cycleTask(${weekNum},${i})">
       <div class="task-check">${chk}</div>
-      <div style="flex:1"><div class="task-text">${txt}</div><div class="task-state-label">${LABELS[state]}</div></div>
+      <div style="flex:1"><div class="task-text">${escHtml(txt)}</div><div class="task-state-label">${LABELS[state]}</div>${scriptLink}</div>
     </div>`;
   }).join('');
 
+  // Total tasks for this week — variable now (lifted the 4-task cap)
+  const totalTasks = wk.tasks.length;
+
+  // If there are scripts for this week beyond what we matched to tasks,
+  // surface them as a separate "Video Scripts for this week" block so the
+  // user can find every script tied to this week without hunting in Strategy.
+  let scriptsBlock = '';
+  if (weekScripts.length > 0) {
+    scriptsBlock = `<div class="week-scripts-extra"><span class="week-section-label">Additional Video Scripts for This Week</span>
+      <div class="task-list">` + weekScripts.map(s =>
+        `<div class="task-item" style="cursor:pointer" onclick="openScriptForTask(${s.num})">
+          <div class="task-check" style="background:rgba(255,1,102,0.12);color:#FF0166">📹</div>
+          <div style="flex:1"><div class="task-text">Script #${s.num}: ${escHtml(s.title)}</div><div class="task-state-label">${escHtml(s.source || s.platform || 'Tap to open')}</div></div>
+        </div>`
+      ).join('') + `</div></div>`;
+  }
+
   let badge = '';
-  if(doneCt===4) badge='<span class="week-card-badge badge-complete">✓ Complete</span>';
+  if(doneCt===totalTasks && totalTasks>0) badge='<span class="week-card-badge badge-complete">✓ Complete</span>';
   else if(weekNum<curWeek) badge='<span class="week-card-badge badge-missed">Needs Attention</span>';
   else if(isCurrent) badge='<span class="week-card-badge badge-current">Current Week</span>';
   else badge='<span class="week-card-badge badge-upcoming">Upcoming</span>';
@@ -1428,9 +1465,10 @@ function renderExecute(weekNum) {
       <div class="week-card-body">
         <div class="week-progress-bar">
           <div class="wk-prog-track"><div class="wk-prog-fill" style="width:${progPct}%"></div></div>
-          <span class="wk-prog-pct">${doneCt}/4</span>
+          <span class="wk-prog-pct">${doneCt}/${totalTasks}</span>
         </div>
         <div class="task-list">${tasksHtml}</div>
+        ${scriptsBlock}
         <span class="week-section-label">Wins This Week</span>
         <textarea class="week-wins-input" id="wins-${weekNum}" placeholder="What worked? What shipped? What feedback did you get from families this week?"
           oninput="updateWins(${weekNum},this.value)">${wins}</textarea>
@@ -1692,20 +1730,25 @@ function getClientWeeks() {
       return { num, theme, focus, tasks };
     }).filter(w => w.num && w.theme);
 
-    // Build the 13-slot output, padding any missing weeks with a placeholder.
+    // Build the 13-slot output. Show ALL roadmap tasks for the week (no cap)
+    // — if the AI generated 5 posts, we render 5 checkboxes; if 3, render 3.
+    // Pad missing weeks with a neutral placeholder (1 task entry, not 4).
     const final = [];
     for (let i = 1; i <= 13; i++) {
       const found = parsed.find(w => w.num === i);
       if (found && found.theme) {
-        const tasks = (found.tasks || []).slice(0, 4);
-        while (tasks.length < 4) tasks.push('Additional task — see your full roadmap PDF in the Strategy tab.');
+        const tasks = (found.tasks || []);
+        // Minimum 1 task so the UI doesn't render an empty list. If the parse
+        // came up empty, link to the strategy tab so the user can find the
+        // detail there.
+        if (tasks.length === 0) tasks.push('See full roadmap in the Strategy tab.');
         final.push({ num: i, theme: found.theme, focus: found.focus, tasks });
       } else {
         final.push({
           num: i,
           theme: 'Week ' + i,
           focus: 'See your full 90-day roadmap in the Strategy tab for week ' + i + ' details.',
-          tasks: ['See your full roadmap in the Strategy tab.', '', '', ''],
+          tasks: ['See your full roadmap in the Strategy tab.'],
         });
       }
     }
@@ -1715,6 +1758,69 @@ function getClientWeeks() {
     console.warn('getClientWeeks parse failed:', e);
     return buildPlaceholderWeeks();
   }
+}
+
+// Parse the Scripts module once and bucket each script by which week its
+// SOURCE: field references. e.g., SOURCE: "Week 1 Day 2 (Facebook Video)"
+// → bucket 1. Used by Execute tab to surface "Video #N — open script" on
+// video tasks. Returns { 1: [{num,title,source,platform}, ...], 2: [...] }.
+function getScriptsByWeek() {
+  if (SESSION._cachedScriptsByWeek) return SESSION._cachedScriptsByWeek;
+  const raw = getGenOutput('scripts');
+  const byWeek = {};
+  if (!raw) { SESSION._cachedScriptsByWeek = byWeek; return byWeek; }
+  try {
+    const blocks = splitRepeating(raw, /^script\s*\d+\s*:/i);
+    blocks.forEach((sb, idx) => {
+      const numMatch = /^script\s*(\d+)\s*:/i.exec(sb.header);
+      const num = numMatch ? parseInt(numMatch[1], 10) : (idx + 1);
+      const title = sb.header.replace(/^script\s*\d+\s*:\s*/i, '').trim();
+      const source = extractField(sb.content, 'SOURCE') || '';
+      const platform = extractField(sb.content, 'PLATFORM') || '';
+      // Find any "Week N" mention in source
+      const wm = /week\s*(\d+)/i.exec(source);
+      const wk = wm ? parseInt(wm[1], 10) : null;
+      if (wk && wk >= 1 && wk <= 13) {
+        if (!byWeek[wk]) byWeek[wk] = [];
+        byWeek[wk].push({ num, title, source, platform });
+      }
+    });
+  } catch (e) { console.warn('getScriptsByWeek parse failed:', e); }
+  SESSION._cachedScriptsByWeek = byWeek;
+  return byWeek;
+}
+
+// Heuristic: does this task call for a video?
+function taskIsVideo(taskText) {
+  return /\b(video|reel|film|shoot|recording|tiktok|youtube)\b/i.test(taskText || '');
+}
+
+// Jump from an Execute task to the matching Video Script in the Strategy
+// tab. Switches tabs, scrolls to the scripts section, expands the matching
+// script card if collapsed.
+function openScriptForTask(scriptNum) {
+  const stratBtn = document.getElementById('tab-btn-strategy');
+  if (stratBtn && typeof showTab === 'function') showTab('strategy', stratBtn);
+  // Wait one frame for the strategy tab to render, then scroll/expand.
+  setTimeout(() => {
+    const section = document.getElementById('section-scripts');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Expand the matching script card. The renderer creates them in the same
+    // order as scriptBlocks; the Nth card has data-script-num=N. If that
+    // attribute isn't there, fall back to the Nth .script-card.
+    setTimeout(() => {
+      let card = document.querySelector('.script-card[data-script-num="' + scriptNum + '"]');
+      if (!card) {
+        const cards = document.querySelectorAll('.script-card');
+        card = cards[scriptNum - 1];
+      }
+      if (card) {
+        const body = card.querySelector('.script-body');
+        if (body && !card.classList.contains('expanded')) card.classList.add('expanded');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 250);
+  }, 50);
 }
 
 function buildPlaceholderWeeks() {
