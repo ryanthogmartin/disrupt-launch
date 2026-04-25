@@ -962,6 +962,20 @@ document.addEventListener('keydown', (e) => {
   setTimeout(() => openLoginModal('reset'), 120);
 })();
 
+// `?login=1` (optionally with `?email=...`) auto-opens the login modal —
+// used when launch.html bounces a Stripe buyer here because their account
+// is already set up. Pre-fills the email so they only type their password.
+(function autoOpenLogin(){
+  const params = new URLSearchParams(location.search);
+  if (params.get('login') !== '1') return;
+  const email = params.get('email') || '';
+  setTimeout(() => {
+    openLoginModal('login');
+    const f = document.getElementById('login-email');
+    if (f && email) { f.value = email; document.getElementById('login-password')?.focus(); }
+  }, 120);
+})();
+
 // ── CONTACT MODAL ──
 function openContactModal() {
   document.getElementById('contact-modal-overlay').classList.add('show');
