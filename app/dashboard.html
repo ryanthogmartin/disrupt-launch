@@ -1407,7 +1407,10 @@ function renderExecute(weekNum) {
   else if(isCurrent) badge='<span class="week-card-badge badge-current">Current Week</span>';
   else badge='<span class="week-card-badge badge-upcoming">Upcoming</span>';
 
-  const note = SESSION.teamNotes[weekNum]||DISRUPT_NOTES[weekNum-1]||'';
+  // DISRUPT_NOTES is hardcoded sample copy from the demo client. ONLY fall
+  // back to it for demo/booth — real clients see only what their strategist
+  // (or future feature) actually saved into team_notes.
+  const note = SESSION.teamNotes[weekNum] || (isDemoClient() ? (DISRUPT_NOTES[weekNum-1] || '') : '');
   const wins = wd.wins||'';
 
   document.getElementById('tab-execute').innerHTML = `
@@ -1431,10 +1434,10 @@ function renderExecute(weekNum) {
         <span class="week-section-label">Wins This Week</span>
         <textarea class="week-wins-input" id="wins-${weekNum}" placeholder="What worked? What shipped? What feedback did you get from families this week?"
           oninput="updateWins(${weekNum},this.value)">${wins}</textarea>
-        <div class="disrupt-notes-box">
+        ${note ? `<div class="disrupt-notes-box">
           <span class="disrupt-notes-label">DISRUPT Note — Week ${weekNum}</span>
-          <div class="disrupt-notes-text">${note}</div>
-        </div>
+          <div class="disrupt-notes-text">${escHtml(note)}</div>
+        </div>` : ''}
       </div>
     </div>
     <div class="revenue-card">
@@ -1633,36 +1636,58 @@ function getClientWeeks() {
   if (isDemoClient()) return WEEKS;
   if (SESSION._cachedClientWeeks) return SESSION._cachedClientWeeks;
   const raw = getGenOutput('roadmap');
-  if (!raw) {
-    // No generated roadmap yet — fall back to a neutral 13-week placeholder
-    // (do NOT leak the hardcoded demo WEEKS to a real client).
-    return buildPlaceholderWeeks();
-  }
+  if (!raw) return buildPlaceholderWeeks();
   try {
-    const sec = parseSections(raw, [
-      'WEEKLY THEMES — MONTHS 1-3',
-      'WEEKLY THEMES - MONTHS 1-3',
-      'WEEKLY THEMES',
-    ]);
-    const weeklyTxt = sec['WEEKLY THEMES — MONTHS 1-3']
-                   || sec['WEEKLY THEMES - MONTHS 1-3']
-                   || sec['WEEKLY THEMES']
-                   || '';
-    const blocks = splitRepeating(weeklyTxt, /^week\s*\d+\s*:/i);
+    // Rather than depending on a single section header (the AI varies between
+    // em-dash, hyphen, with/without "MONTHS 1-3", and sometimes adds markdown
+    // hashes), scan the WHOLE roadmap text for "WEEK N:" line starts. This is
+    // safe because no other section header in the roadmap prompt matches that
+    // shape. We also tolerate markdown prefixes like "## " or "**".
+    const cleaned = raw.replace(/^[#*\->\s]+/gm, ''); // strip leading markdown noise per line
+    const blocks = splitRepeating(cleaned, /^week\s*\d+\s*[:\-—–]/i);
     const parsed = blocks.map(wb => {
-      const numMatch = /^week\s*(\d+)\s*:/i.exec(wb.header);
+      const numMatch = /^week\s*(\d+)\s*[:\-—–]/i.exec(wb.header);
       const num = numMatch ? parseInt(numMatch[1], 10) : null;
-      const theme = wb.header.replace(/^week\s*\d+\s*:\s*/i, '').trim();
-      const focus = extractField(wb.content, 'FOCUS')
-                 || extractField(wb.content, 'STRATEGIC FOCUS')
-                 || '';
-      const postsBlock = extractField(wb.content, 'POSTS') || '';
-      // Split posts block into discrete tasks: numbered list, bullets, or lines.
+      // Theme is whatever's after the "WEEK N:" portion of the header
+      const theme = wb.header.replace(/^week\s*\d+\s*[:\-—–]\s*/i, '').trim();
+      // Focus extraction — pull whatever's after a "Focus:" / "Strategic Focus:"
+      // line, stopping at the next labeled field (Posts:, Theme:, etc) OR a
+      // blank line. We need our own loop here because extractField only stops
+      // on ALL-CAPS labels, but the AI usually writes "Posts:" in title case.
+      let focus = '';
+      const contentLines = wb.content.split('\n');
+      for (let li = 0; li < contentLines.length; li++) {
+        const fm = /^\s*(?:strategic\s+)?focus\s*[:：]\s*(.*)$/i.exec(contentLines[li]);
+        if (!fm) continue;
+        let val = fm[1].trim();
+        for (let lj = li + 1; lj < contentLines.length; lj++) {
+          const next = contentLines[lj].trim();
+          // Stop at any labeled-field line (one or two title-cased words + colon)
+          if (/^\s*[A-Za-z][A-Za-z\s]{1,30}\s*[:：]/.test(next)) break;
+          if (!next && val) break;
+          if (next) val += (val ? ' ' : '') + next;
+        }
+        focus = val.replace(/^\*+|\*+$/g, '').trim();
+        break;
+      }
+      if (!focus) {
+        const firstLine = (wb.content.split('\n').map(l => l.trim()).find(l => l && !/^[A-Za-z][A-Za-z\s]{1,30}\s*[:：]/.test(l)) || '');
+        if (firstLine.length < 280) focus = firstLine;
+      }
+      // Posts: pull everything after a "Posts:" line until end of week block
+      let postsBlock = '';
+      const postsIdx = wb.content.search(/^\s*posts?\s*[:：]/im);
+      if (postsIdx >= 0) {
+        postsBlock = wb.content.slice(postsIdx).replace(/^\s*posts?\s*[:：]\s*/i, '');
+      }
+      // Split posts block into discrete tasks. Handle: numbered (1. / 1)),
+      // bulleted (• - * — –), or one-per-line. Strip leading list markers.
       const tasks = postsBlock.split('\n')
         .map(l => l.trim())
         .filter(l => l.length > 0)
-        // Strip leading numerals or bullets before checking length
         .map(l => l.replace(/^\d+[.)]\s*/, '').replace(/^[•\-—–\*]\s*/, '').trim())
+        // Drop any lingering subheaders like "POSTS:" if they slipped through
+        .filter(l => !/^posts?\s*[:：]?\s*$/i.test(l))
         .filter(l => l.length > 8);
       return { num, theme, focus, tasks };
     }).filter(w => w.num && w.theme);
@@ -1672,16 +1697,15 @@ function getClientWeeks() {
     for (let i = 1; i <= 13; i++) {
       const found = parsed.find(w => w.num === i);
       if (found && found.theme) {
-        // Pad/trim tasks to exactly 4 (matches weekProgress.tasks[0..3] schema).
         const tasks = (found.tasks || []).slice(0, 4);
-        while (tasks.length < 4) tasks.push('Add a task here in your roadmap PDF.');
+        while (tasks.length < 4) tasks.push('Additional task — see your full roadmap PDF in the Strategy tab.');
         final.push({ num: i, theme: found.theme, focus: found.focus, tasks });
       } else {
         final.push({
           num: i,
           theme: 'Week ' + i,
-          focus: 'Detailed weekly theme will appear here once your roadmap is fully released.',
-          tasks: ['Theme details still loading.', 'Refresh in a moment if just released.', 'Or contact support@disruptmedia.co.', 'We\'ll have this resolved fast.'],
+          focus: 'See your full 90-day roadmap in the Strategy tab for week ' + i + ' details.',
+          tasks: ['See your full roadmap in the Strategy tab.', '', '', ''],
         });
       }
     }
@@ -1699,15 +1723,17 @@ function buildPlaceholderWeeks() {
     arr.push({
       num: i,
       theme: 'Week ' + i,
-      focus: 'Your roadmap is still being prepared. Refresh in a moment, or contact support@disruptmedia.co if this persists.',
-      tasks: ['Roadmap not loaded.', 'Refresh the page.', 'Contact support if it persists.', 'support@disruptmedia.co'],
+      focus: 'Your roadmap will appear here once your strategy is released.',
+      tasks: ['', '', '', ''],
     });
   }
   return arr;
 }
 
-// Pulls score targets + baselines from generated goals + intake answers.
-// Falls back to the hardcoded sample numbers only for the demo client.
+// Parse 90-day case/review/preneed targets from the goals module's
+// "90-DAY TARGETS" section. Fall back to neutral 0 (UI shows "set your
+// goal" copy) rather than guessing — guessing was matching things like
+// "245 calls/year" baseline as a 90-day target, which was way off.
 function getClientTargets() {
   if (isDemoClient()) {
     return { casesTarget: 27, reviewsTarget: 100, reviewsBaseline: 85, preneedTarget: 6 };
@@ -1716,25 +1742,70 @@ function getClientTargets() {
   const cd = SESSION.viewingClientData || SESSION.clientData;
   const a = (cd && cd.intake_answers) || {};
 
-  // Reviews baseline = first integer in q5_5 ("112 reviews, 4.9 stars" → 112)
+  // Reviews baseline from intake q5_5 (e.g. "112 reviews, 4.9 stars" → 112)
   let reviewsBaseline = 0;
-  const q55 = a.q5_5 || '';
-  const m = /(\d{1,5})/.exec(q55);
-  if (m) reviewsBaseline = parseInt(m[1], 10);
+  const q55Match = /(\d{1,5})/.exec(a.q5_5 || '');
+  if (q55Match) reviewsBaseline = parseInt(q55Match[1], 10);
 
-  // Targets from generated goals if parseable. Otherwise leave 0 — the UI
-  // will treat them as "set your goal" rather than show fake demo numbers.
   let casesTarget = 0, reviewsTarget = 0, preneedTarget = 0;
   const goalsRaw = getGenOutput('goals') || '';
-  const numAfter = (label) => {
-    const re = new RegExp(label + '[^\\n]*?(\\d{1,5})', 'i');
-    const hit = re.exec(goalsRaw);
-    return hit ? parseInt(hit[1], 10) : 0;
-  };
-  // Heuristics: look for case/review/preneed targets in the goals output
-  casesTarget    = numAfter('case[s]?\\s*target') || numAfter('90.day\\s*case') || numAfter('additional\\s*case') || 0;
-  reviewsTarget  = numAfter('review[s]?\\s*target') || numAfter('review\\s*goal') || (reviewsBaseline ? reviewsBaseline + 15 : 0);
-  preneedTarget  = numAfter('pre.need\\s*target') || numAfter('pre.need\\s*goal') || numAfter('pre.need\\s*inquir') || 0;
+
+  if (goalsRaw) {
+    // Find the "90-DAY TARGETS" subsection. Supports many phrasings.
+    const goalsSec = parseSections(goalsRaw, [
+      '90-DAY TARGETS',
+      '90 DAY TARGETS',
+      'NINETY-DAY TARGETS',
+      '90-DAY GOALS',
+    ]);
+    const txt = goalsSec['90-DAY TARGETS']
+             || goalsSec['90 DAY TARGETS']
+             || goalsSec['NINETY-DAY TARGETS']
+             || goalsSec['90-DAY GOALS']
+             || '';
+    if (txt) {
+      const lines = txt.split('\n').map(l => l.trim()).filter(Boolean);
+      // Smart number extraction:
+      //   "Increase reviews from 112 to 130" → 130 (the target, not baseline)
+      //   "Add 8-10 cases above 245/year"    → 10 (upper bound of goal)
+      //   "Generate 30 pre-need consults"    → 30
+      // Skips integers preceded by baseline/current/of/year/from context.
+      const grabNum = (line) => {
+        const fromTo = /from\s+\d{1,5}\s+to\s+(\d{1,5})/i.exec(line);
+        if (fromTo) return parseInt(fromTo[1], 10);
+        const rangeDash = /\b(\d{1,5})\s*[-–—]\s*(\d{1,5})\b/.exec(line);
+        if (rangeDash) return parseInt(rangeDash[2], 10);
+        const rangeTo = /\b(\d{1,5})\s+to\s+(\d{1,5})\b/i.exec(line);
+        if (rangeTo) return parseInt(rangeTo[2], 10);
+        const re = /\b(\d{1,5})\b/g;
+        let m;
+        while ((m = re.exec(line)) !== null) {
+          const n = parseInt(m[1], 10);
+          if (n >= 2000 && n <= 2100) continue;            // year
+          const before = line.slice(Math.max(0, m.index - 30), m.index).toLowerCase();
+          if (/baseline|current|of\s+$|year/.test(before)) continue; // baseline reference
+          return n;
+        }
+        return 0;
+      };
+      for (const line of lines) {
+        const lower = line.toLowerCase();
+        if (!casesTarget && /\bcase|at-need\b/.test(lower) && !/review/.test(lower) && !/pre-?need/.test(lower)) {
+          casesTarget = grabNum(line);
+        }
+        if (!reviewsTarget && /\breview/.test(lower)) {
+          reviewsTarget = grabNum(line);
+        }
+        if (!preneedTarget && /pre-?need/.test(lower)) {
+          preneedTarget = grabNum(line);
+        }
+      }
+    }
+  }
+
+  // If reviews target wasn't in the goals output, build a safe fallback from
+  // the baseline (target = baseline + 15) so the UI shows progress correctly.
+  if (!reviewsTarget && reviewsBaseline) reviewsTarget = reviewsBaseline + 15;
 
   const targets = { casesTarget, reviewsTarget, reviewsBaseline, preneedTarget };
   SESSION._cachedClientTargets = targets;
