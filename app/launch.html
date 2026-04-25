@@ -931,8 +931,21 @@ async function submitResendSetup(){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: s.token })
     });
-    if (res.status === 401) { clearSession(); if (modeEl) modeEl.classList.add('active'); return; }
-    if (!res.ok) { if (modeEl) modeEl.classList.add('active'); return; }
+    if (res.status === 401) {
+      // Session token is invalid/expired. Clear it and bounce to the
+      // landing page — we can't drop the user on screen-mode because that's
+      // the legacy public-signup welcome and we now block all unauthorized
+      // access to launch.html.
+      clearSession();
+      location.replace('/');
+      return;
+    }
+    if (!res.ok) {
+      // Worker error (5xx, network, etc) — also bounce to / rather than
+      // exposing the legacy mode-select. The user can log in again from there.
+      location.replace('/');
+      return;
+    }
     var data = await res.json();
     if (data.state === 'dashboard') { location.replace('/dashboard.html'); return; }
     // Guided user whose intake + generation is done but strategist hasn't
@@ -961,8 +974,8 @@ async function submitResendSetup(){
     }
     renderSection(lastSection);
   } catch(e) {
-    console.warn('resume failed, falling back to mode-select', e);
-    if (modeEl) modeEl.classList.add('active');
+    console.warn('resume failed, bouncing to /', e);
+    location.replace('/');
   }
 })();
 
