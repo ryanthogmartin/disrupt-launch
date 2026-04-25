@@ -1388,6 +1388,13 @@ async function startGeneration() {
   // Phase 3: scripts — takes brand + personas + week_posts + roadmap output
   // as voice + content-plan context so scripts match the client's exact
   // voice and cover every video across the 13-week plan.
+  //
+  // Phase 2 just fired 13 parallel /ai calls (one per week) which can saturate
+  // Anthropic's per-minute rate limit. Pause before kicking off the scripts
+  // call so it doesn't immediately hit 429. 25 seconds gives the rate-limit
+  // window time to roll forward.
+  await new Promise(resolve => setTimeout(resolve, 25000));
+
   const allWeekPostsText = Object.entries(generatedOutput.week_posts || {})
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([n, t]) => '=== WEEK ' + n + ' ===\n' + t)
