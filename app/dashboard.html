@@ -255,6 +255,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .client-delete-btn:hover{background:#B00020;color:#fff;}
 .client-unrelease-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#B97100;border:1px solid #B97100;border-radius:5px;padding:6px 10px;cursor:pointer;}
 .client-unrelease-btn:hover{background:#B97100;color:#fff;}
+.client-regenerate-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#5B4FB3;border:1px solid #5B4FB3;border-radius:5px;padding:6px 10px;cursor:pointer;}
+.client-regenerate-btn:hover{background:#5B4FB3;color:#fff;}
 .queue-bulk-btn{font-family:var(--font-mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;background:var(--pink);color:#fff;border:none;border-radius:5px;padding:8px 14px;cursor:pointer;font-weight:700;margin-left:auto;}
 .queue-bulk-btn:hover{background:#E00059;}
 .queue-bulk-btn:disabled{background:#888;cursor:wait;}
@@ -1211,6 +1213,7 @@ function renderAdminHome() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <button class="client-view-btn" onclick="viewClient('${c.id}')">View Dashboard →</button>
         ${(c.intake_answers||{})._strategy_released ? `<button class="client-unrelease-btn" onclick="unreleaseStrategy('${c.id}')" title="Pull strategy back into the review queue">Unrelease</button>` : ''}
+        ${(c.intake_answers||{})._strategy_generated_output ? `<button class="client-regenerate-btn" onclick="regenerateClientStrategy('${c.id}')" title="Clear the generated strategy so the client can re-run generation with the latest engine. Intake answers are preserved.">Regenerate</button>` : ''}
         <button class="client-delete-btn" onclick="openDeleteClient('${c.id}')" title="Delete client permanently">Delete</button>
       </div>
     </div>`;
@@ -3153,6 +3156,33 @@ async function unreleaseStrategy(clientId) {
     renderAll();
   } catch (e) {
     toast(e.message || 'Unrelease failed', 'error');
+  }
+}
+
+// ── REGENERATE (admin) ───────────────────────────────────────────────────────
+// Wipes the client's generated strategy + intake-complete flag so their next
+// login routes them to the intake (with answers preserved) where they can
+// click Generate to rebuild with the current generation engine.
+async function regenerateClientStrategy(clientId) {
+  const c = (SESSION.allClients || []).find(x => String(x.id) === String(clientId));
+  if (!c) { toast('Client not found', 'error'); return; }
+  const name = c.name || c.contact_name || c.email;
+  const ok = confirm(
+    'Regenerate strategy for "' + name + '"?\n\n' +
+    '• Their existing 8-module output will be deleted.\n' +
+    '• Their intake answers stay intact.\n' +
+    '• Next time they log in, they\'ll land on the intake at their last section. Clicking Generate runs the current pipeline (13 weeks × 5 posts).\n' +
+    '• If you\'re regenerating your own account, log out first.\n\n' +
+    'Continue?'
+  );
+  if (!ok) return;
+  try {
+    await apiPost('/admin/regenerate-strategy', { token: sessionToken(), targetClientId: clientId });
+    toast('Strategy cleared. Client can re-run generation on next login.', 'success');
+    await loadDashboardData();
+    renderAll();
+  } catch (e) {
+    toast(e.message || 'Regenerate failed', 'error');
   }
 }
 
