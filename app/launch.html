@@ -1617,11 +1617,29 @@ async function callClaude(systemPrompt, userPrompt, opts) {
 // the 6 modules that already worked.
 let _failedModules = [];
 
+let _stuckReported = false;
 async function showRetryScreen(msg, failed) {
   _failedModules = failed || [];
   document.getElementById('screen-gen').classList.remove('active');
   document.getElementById('screen-retry').classList.add('active');
   document.getElementById('retry-msg').textContent = (msg || 'Generation failed.') + ' Click Try Again to re-run just the missing modules.';
+  // Notify Worker so it can email support + the buyer. Once-per-page-load —
+  // a second showRetryScreen call (after a Try Again that also failed) just
+  // bumps `attempt`. Best-effort; never blocks the UI.
+  try {
+    const s = (typeof loadSession === 'function') ? loadSession() : null;
+    if (s && s.token) {
+      _stuckReported = (typeof _stuckReported === 'boolean') ? _stuckReported : false;
+      const attempt = _stuckReported ? 2 : 1;
+      _stuckReported = true;
+      const failedPayload = (_failedModules || []).map(m => ({ key: m.key, label: m.label }));
+      fetch(WORKER_BASE + '/report-stuck-generation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: s.token, failedModules: failedPayload, attempt })
+      }).catch(e => console.warn('stuck-gen report failed:', e));
+    }
+  } catch (e) { /* never block the retry screen on telemetry */ }
 }
 
 async function retryGeneration() {
