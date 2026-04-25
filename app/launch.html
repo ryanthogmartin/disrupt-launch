@@ -531,7 +531,7 @@ textarea { resize: vertical; min-height: 96px; }
       <div class="gen-card" id="gcard-scripts"><span class="gen-card-icon">⋯</span><span class="gen-card-label">Video Scripts</span></div>
       <div class="gen-card" id="gcard-preneed"><span class="gen-card-icon">⋯</span><span class="gen-card-label">Pre-Need Engine</span></div>
       <div class="gen-card" id="gcard-roadmap"><span class="gen-card-icon">⋯</span><span class="gen-card-label">90-Day Roadmap</span></div>
-      <div class="gen-card" id="gcard-week1"><span class="gen-card-icon">⋯</span><span class="gen-card-label">Week 1 Calendar</span></div>
+      <div class="gen-card" id="gcard-weekly"><span class="gen-card-icon">⋯</span><span class="gen-card-label">Weekly Content<br><span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)" id="gcard-weekly-sub">0/13 weeks</span></span></div>
     </div>
   </div>
 </div>
@@ -711,7 +711,7 @@ const SECTIONS = [
 let mode = null;
 let currentSection = 0;
 let answers = {};
-let generatedOutput = { goals: '', competitors: '', brand: '', personas: '', scripts: '', preneed: '', roadmap: '', week1: '' };
+let generatedOutput = { goals: '', competitors: '', brand: '', personas: '', scripts: '', preneed: '', roadmap: '', week_posts: {} };
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 function startMode(m) {
@@ -1287,6 +1287,10 @@ function jumpTo(i) { renderSection(i); }
 // failed module gets one silent retry; if still failed after that, we show
 // the retry screen listing exactly which modules need to re-run (preserves
 // the successful output).
+// 3-phase generation:
+//   Phase 1: 6 strategic modules in parallel (goals/competitors/brand/personas/preneed/roadmap)
+//   Phase 2: weekly_posts (1 coordinator that fans out to 13 parallel per-week calls)
+//   Phase 3: scripts (uses brand+personas+week_posts+roadmap as voice/content context)
 const PHASE_1_MODULES = [
   { key: 'goals',       label: 'Goals & Scorecard',  fn: generateGoals       },
   { key: 'competitors', label: 'Competitor Intel',   fn: generateCompetitors },
@@ -1294,12 +1298,14 @@ const PHASE_1_MODULES = [
   { key: 'personas',    label: 'Customer Personas',  fn: generatePersonas    },
   { key: 'preneed',     label: 'Pre-Need Engine',    fn: generatePreneed     },
   { key: 'roadmap',     label: '90-Day Roadmap',     fn: generateRoadmap     },
-  { key: 'week1',       label: 'Week 1 Calendar',    fn: generateWeek1       },
 ];
 const PHASE_2_MODULES = [
+  { key: 'weekly',      label: 'Weekly Content (×13)', fn: generateWeeklyPosts },
+];
+const PHASE_3_MODULES = [
   { key: 'scripts',     label: 'Video Scripts',      fn: generateScripts     },
 ];
-const ALL_MODULES = PHASE_1_MODULES.concat(PHASE_2_MODULES);
+const ALL_MODULES = PHASE_1_MODULES.concat(PHASE_2_MODULES).concat(PHASE_3_MODULES);
 
 function setModuleState(key, state) {
   const el = document.getElementById('gcard-' + key);
@@ -1359,7 +1365,7 @@ async function startGeneration() {
   ALL_MODULES.forEach(m => setModuleState(m.key, 'pending'));
   updateGenProgress();
 
-  // Phase 1: 7 modules in parallel using raw intake context
+  // Phase 1: 6 strategic modules in parallel using raw intake context
   const phase1Failed = await runBatch(PHASE_1_MODULES, ctx);
   if (phase1Failed.length) {
     const names = phase1Failed.map(m => m.label).join(', ');
@@ -1368,21 +1374,36 @@ async function startGeneration() {
     return;
   }
 
-  // Phase 2: scripts — takes brand + personas + week1 + roadmap output as
-  // voice + content-plan context so scripts match the client's exact voice
-  // and cover every video in the plan (not just 5 disconnected themes).
-  const scriptsCtx = {
-    intake:   ctx,
-    brand:    generatedOutput.brand    || '',
-    personas: generatedOutput.personas || '',
-    week1:    generatedOutput.week1    || '',
-    roadmap:  generatedOutput.roadmap  || '',
-  };
-  const phase2Failed = await runBatch(PHASE_2_MODULES, scriptsCtx);
+  // Phase 2: weekly_posts — 13 parallel per-week calls anchored to roadmap
+  // themes. Coordinator handles partial failures internally (1-2 failed
+  // weeks are acceptable; 3+ throws and surfaces the retry screen).
+  const phase2Failed = await runBatch(PHASE_2_MODULES, ctx);
   if (phase2Failed.length) {
     const names = phase2Failed.map(m => m.label).join(', ');
     console.error('Phase 2 modules still failing after retry:', phase2Failed.map(m => m.key));
     showRetryScreen("We couldn't generate " + phase2Failed.length + ' of your modules (' + names + '). Your answers are saved.', phase2Failed);
+    return;
+  }
+
+  // Phase 3: scripts — takes brand + personas + week_posts + roadmap output
+  // as voice + content-plan context so scripts match the client's exact
+  // voice and cover every video across the 13-week plan.
+  const allWeekPostsText = Object.entries(generatedOutput.week_posts || {})
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([n, t]) => '=== WEEK ' + n + ' ===\n' + t)
+    .join('\n\n');
+  const scriptsCtx = {
+    intake:   ctx,
+    brand:    generatedOutput.brand    || '',
+    personas: generatedOutput.personas || '',
+    week1:    allWeekPostsText, // legacy-compat key — scripts prompt reads this
+    roadmap:  generatedOutput.roadmap  || '',
+  };
+  const phase3Failed = await runBatch(PHASE_3_MODULES, scriptsCtx);
+  if (phase3Failed.length) {
+    const names = phase3Failed.map(m => m.label).join(', ');
+    console.error('Phase 3 modules still failing after retry:', phase3Failed.map(m => m.key));
+    showRetryScreen("We couldn't generate " + phase3Failed.length + ' of your modules (' + names + '). Your answers are saved.', phase3Failed);
     return;
   }
 
@@ -1537,12 +1558,17 @@ async function retryGeneration() {
   const toRun = _failedModules.length ? _failedModules : ALL_MODULES;
   toRun.forEach(m => setModuleState(m.key, 'pending'));
   updateGenProgress();
-  // Scripts needs phase-1 context; everything else just needs intake context.
+  // Scripts needs the full content plan as context; everything else just
+  // needs the raw intake. Concatenate week_posts in order for scripts.
+  const allWeekPostsText = Object.entries(generatedOutput.week_posts || {})
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([n, t]) => '=== WEEK ' + n + ' ===\n' + t)
+    .join('\n\n');
   const scriptsCtx = {
     intake:   ctx,
     brand:    generatedOutput.brand    || '',
     personas: generatedOutput.personas || '',
-    week1:    generatedOutput.week1    || '',
+    week1:    allWeekPostsText, // legacy-compat key
     roadmap:  generatedOutput.roadmap  || '',
   };
   const results = await Promise.all(toRun.map(m => runModule(m, m.key === 'scripts' ? scriptsCtx : ctx)));
@@ -1655,23 +1681,23 @@ async function generateScripts(arg) {
     '\n\n==================================================',
     '\nCUSTOMER PERSONAS (target these specific humans with their specific winning messages):\n', input.personas || '[not available]',
     '\n\n==================================================',
-    '\nWEEK 1 CONTENT CALENDAR (identify every video post here — each one needs a script):\n', input.week1 || '[not available]',
+    '\n13-WEEK FACEBOOK CONTENT PLAN (identify every video / Reel post across all 13 weeks — pick the most strategically important ones for scripts):\n', input.week1 || '[not available]',
     '\n\n==================================================',
-    '\n90-DAY ROADMAP (look for weekly themes that call for a video — those need scripts too):\n', input.roadmap || '[not available]',
+    '\n90-DAY ROADMAP OVERVIEW (pillars, platform strategy, weekly themes):\n', input.roadmap || '[not available]',
     '\n\n==================================================',
-    '\n\nYour job: produce production-ready video scripts for every video this client is planning to shoot in the next 13 weeks. Do not invent generic themes — tie every script to a specific post or theme from the content plan above.',
+    '\n\nYour job: produce production-ready video / Reel scripts for the most important video posts across the 13-week plan. Every post in the plan is built for Facebook (and cross-posted to Instagram Reels where applicable). Do not invent generic themes — tie every script to a specific post or theme from the plan above.',
     '\n\nRULES:',
     '\n1. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
     '\n2. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER words verbatim where natural.',
     '\n3. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
-    '\n4. Write one script per video post in the Week 1 calendar. Plus one evergreen script per message pillar in the Brand Guidelines.',
-    '\n5. Minimum 8 scripts. Maximum 12. Don\'t pad.',
+    '\n4. Cover the most strategically important video posts spread across the 13 weeks — not all from Week 1. Aim for 1-2 scripts per quarter of the plan (early, mid, late) plus 2-3 evergreen scripts (one per message pillar).',
+    '\n5. Minimum 10 scripts. Maximum 14. Don\'t pad.',
     '\n\nFORMAT EACH SCRIPT EXACTLY (use these ALL-CAPS headers verbatim, no variations):',
     '\n\nSCRIPT {N}: [Title — tied to the source post or pillar]',
-    '\nPLATFORM: [Facebook / Instagram Reels / Both]',
-    '\nRUNTIME: [Target seconds — 60-90 for Facebook, 30-60 for Reels]',
+    '\nPLATFORM: [Facebook / Facebook Reel — the latter for shorter vertical content. Default to Facebook.]',
+    '\nRUNTIME: [Target seconds — 60-90 for long-form Facebook, 30-60 for Reels]',
     '\nPERSONA TARGET: [Which persona — use the persona\'s name from the Personas module]',
-    '\nSOURCE: [Which post/theme this script is for — e.g. "Week 1 Day 2 (Facebook Video)" or "Evergreen — Pillar 1"]',
+    '\nSOURCE: [Which post/theme this script is for — e.g. "Week 3 Post 2 (Reel)" or "Evergreen — Pillar 1"]',
     '\n\nHOOK (0-3 sec): [Word for word in the client\'s brand voice. Pattern interrupt. No slow intros, no "Hi I\'m ___".]',
     '\n\nPROBLEM (3-15 sec): [Word for word. The specific market truth or persona-specific pain point. Use the persona\'s TRUST TRIGGER language.]',
     '\n\nCREDIBILITY (15-25 sec): [Word for word. Why this funeral home specifically — named staff, specific asset, specific differentiator from the intake.]',
@@ -1730,55 +1756,133 @@ async function generatePreneed(ctx) {
 
 
 async function generateRoadmap(ctx) {
-  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate a complete 90-day social media content roadmap. Structure exactly as follows:\n\nCONTENT STRATEGY OVERVIEW\n[3-4 sentences on the strategic approach for this specific business]\n\nCONTENT PILLARS\nPILLAR 1: [Name] — [One-line description]\nPILLAR 2: [Name] — [One-line description]\nPILLAR 3: [Name] — [One-line description]\n\nPLATFORM STRATEGY\nFACEBOOK: [Specific strategy, posting frequency, content types]\nINSTAGRAM: [Specific strategy, posting frequency, content types]\nGOOGLE BUSINESS: [Specific strategy for posts and review generation]\n\nWEEKLY THEMES — MONTHS 1-3\n[Generate 13 weeks. Each week format:]\nWEEK [N]: [THEME TITLE]\nFocus: [One sentence on what this week builds toward]\nPosts: [3 specific post concepts with format — e.g., "Facebook video: Owner talks about [specific topic]"]\n\nREVIEW GENERATION STRATEGY\n[Specific 4-step plan to generate 10+ Google reviews in the first 30 days]\n\n90-DAY MILESTONES\nDAY 30: [Specific measurable goal]\nDAY 60: [Specific measurable goal]\nDAY 90: [Specific measurable goal]`;
-  // 13 weekly themes + platform + pillars + milestones — needs the bigger token window.
-  generatedOutput.roadmap = await callClaude(SYSTEM, prompt, { maxTokens: 8000 });
+  // Roadmap is now overview content only. The detailed weekly posts come from
+  // generateWeeklyPosts (13 parallel calls × 5 posts each = 65 fully-built
+  // posts). This module sets the strategic frame: pillars, platform strategy,
+  // 13 weekly themes (one-liner each), review strategy, milestones.
+  // Facebook-first: drop the Instagram section. Cross-posting is mechanical
+  // via Meta Business Suite, not a separate strategy.
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate the strategic overview for a 90-day Facebook content plan. We're Facebook-first because the funeral home audience (50+ daughters, pre-planners) lives on Facebook. Every post is designed for Facebook; the buyer cross-posts to Instagram via Meta Business Suite when they want extra reach. Structure exactly as follows:\n\nCONTENT STRATEGY OVERVIEW\n[3-4 sentences on the strategic approach for this specific business. Facebook-first. Reference their actual differentiator and persona.]\n\nCONTENT PILLARS\nPILLAR 1: [Name] — [One-line description]\nPILLAR 2: [Name] — [One-line description]\nPILLAR 3: [Name] — [One-line description]\n\nPLATFORM STRATEGY\nFACEBOOK: [Specific strategy: posting frequency (5 posts/week), content mix (videos / Reels / Facebook galleries / photo posts / text posts), tone, what to lean into]\nINSTAGRAM CROSS-POST: [One sentence — "Use Meta Business Suite to mirror Facebook posts to Instagram when relevant. Reels translate directly. Galleries work as Instagram carousels (cap at 10 photos). Skip cross-posting on text-heavy story posts."]\nGOOGLE BUSINESS: [Specific strategy for posts and review generation]\n\nWEEKLY THEMES — MONTHS 1-3\n[Generate 13 weeks. Each week format — keep tight, this is overview only; the full 5 posts per week are generated separately:]\nWEEK [N]: [THEME TITLE]\nFocus: [One sentence on what this week builds toward]\n\nREVIEW GENERATION STRATEGY\n[Specific 4-step plan to generate 10+ Google reviews in the first 30 days]\n\n90-DAY MILESTONES\nDAY 30: [Specific measurable goal]\nDAY 60: [Specific measurable goal]\nDAY 90: [Specific measurable goal]`;
+  generatedOutput.roadmap = await callClaude(SYSTEM, prompt, { maxTokens: 6000 });
 }
 
 // ── RENDER OUTPUT ────────────────────────────────────────────────────────────
 
-async function generateWeek1(ctx) {
-  setGenStep(6); // runs alongside roadmap step
-  const w1prompt = [
+// Per-week post angles. Week 1 establishes voice + differentiator; subsequent
+// weeks rotate through pillars, social proof, education, pre-need, community,
+// veterans, etc. This is the "narrative spine" — each week has a strategic
+// purpose so 13 weeks add up to a complete brand-building sequence.
+const WEEK_POST_ANGLES = {
+  1:  ['Introduce the business + person behind it. Build immediate humanity.', 'Lead with the biggest operational differentiator. Make competitor weakness obvious without naming them.', 'Address the #1 family fear directly. Show how this home eliminates it.', 'Community proof. Use a real local tie or sponsorship.', 'Pre-need awareness. Plant the seed. Speak to the pre-planner persona.'],
+  2:  ['Aftercare proof — show what happens AFTER the service. Tangible care, not a brochure.', 'Lean into the named on-camera staff. Show their face + voice. Build recognition.', 'Educate on a service families assume they understand but don\'t.', 'A real (anonymized) family story that demonstrates the brand promise in action.', 'Soft pre-need CTA — invite to a no-pressure conversation.'],
+  3:  ['The 30-day card or aftercare program. Concrete proof of long-term care.', 'Demystify pricing transparency. Address the cost-shame fear directly.', 'Behind-the-scenes: a moment most homes hide that this one is proud of.', 'Veterans services or a specific service segment that\'s undersold.', 'Pre-need for couples — different angle from the solo pre-planner.'],
+  4:  ['Compete without naming names. Position cheaper options as a risk families don\'t see coming.', 'Owner/director directly addresses what makes the experience different.', 'Hyper-local content — sponsorship, parade, charity, community event.', 'Educational carousel: questions every family should ask any funeral home.', 'A grief-program post that shows aftercare is a relationship, not a transaction.'],
+  5:  ['Cremation education — demystify options, position as guide not salesperson.', 'On-camera director talks about a meaningful moment from the previous month.', 'Facility tour highlight — feature the most underrated room or detail.', 'Family testimonial (with permission) — short, specific, emotional.', 'Pre-need ROI — frame planning as a gift to family, not a sales pitch.'],
+  6:  ['Legacy content — the years in business as proof of staying power, not nostalgia.', 'Address an objection or hesitation that comes up in arrangement conferences.', 'Educational post — what most families wish they\'d known before choosing.', 'Community involvement spotlight — a person, partner, or program.', 'Pre-need open house teaser — even if not running one yet, plant the idea.'],
+  7:  ['Pre-need without the pressure — ROI, peace of mind, control over the story.', 'On-camera Q&A — answer the question staff hear most often.', 'Specialty service spotlight — what nobody else in market does this way.', 'Community review highlight — share a recent 5-star review with a thank-you.', 'Real story (anonymized) of a family who was glad they planned ahead.'],
+  8:  ['A first-call story — what happens when families dial at 2 AM.', 'Educational post about something families regularly get wrong about funerals.', 'Behind-the-scenes content — staff prepping, setting up, doing the work.', 'Brand promise in plain language — what every family gets, every time.', 'Photo gallery from a recent event — community, grief support, or service.'],
+  9:  ['Veterans services — specific, dignified, not generic. Speak to veteran families directly.', 'Owner addresses a hard truth — what most homes won\'t say out loud.', 'A staff member spotlight — face, name, role, story.', 'Pre-need targeted at adult children planning for parents.', 'Educational post — paperwork, checklists, things families wish they\'d had.'],
+  10: ['Premium positioning — own the price without apology if they\'re premium-priced.', 'Compare apples-to-apples — what a premium experience actually includes.', 'Real client (anonymized) explaining why they chose this home over others.', 'Community partnership or sponsorship recap.', 'Pre-need targeted at couples who recently lost a friend.'],
+  11: ['Grief support program — proof of community presence beyond services.', 'Director shares a personal moment — a family who changed how they think about the work.', 'Educational post — a specific service nobody asks about but should.', 'Cremation positioning — how this home treats cremation differently.', 'Pre-need for the organized planner persona — checklists, control, peace.'],
+  12: ['Facility differentiator — chapel size, garden, or unique room nobody else has.', 'On-camera testimonial-style content — staff or family.', 'Educational post — common myth busted with specific facts.', 'Community recap — events, partnerships, or programs over the past quarter.', 'Pre-need angle — a specific scenario that makes planning feel essential.'],
+  13: ['Forward-looking — what this home is building next. Momentum, not closure.', 'Quarter recap — best moments, biggest wins, real engagement.', 'Director thanks the community by name — local pride, brand humility.', 'Pre-need final push — an offer or open house if appropriate.', 'A teaser for next quarter — what families can expect to see.'],
+};
+
+// Generate 5 detailed Facebook posts for ONE week. Called 13 times in
+// parallel by the weekly_posts coordinator. Each post is ready-to-publish.
+async function generateWeekPosts(ctx, weekNum, weekTheme) {
+  const angles = WEEK_POST_ANGLES[weekNum] || WEEK_POST_ANGLES[1];
+  const prompt = [
     'CLIENT INTELLIGENCE:\n' + ctx,
-    '\n\nGenerate a complete Week 1 Content Calendar — 7 days, 2 posts per day (14 posts total).',
-    ' All 7 posts are Facebook posts.',
-    ' These posts must align with Week 1 of the 90-day roadmap theme.',
-    ' Every post must be written, specific, and ready to publish — not a template.\n\n',
-    'For EACH of the 14 posts use EXACTLY this structure:\n\n',
-    'DAY [N] — [PLATFORM]\n',
-    'POST TYPE: [Video / Photo / Text / Carousel]\n',
-    'VISUAL DIRECTION: [Precise instruction — who to film or photograph, where, what they should be doing or saying.',
-    ' If video: include the opening line they should say on camera.',
-    ' If photo: describe the exact shot — subject, location, angle, what should be visible.',
-    ' Be specific enough that someone with no marketing experience knows exactly what to capture.]\n',
-    'CAPTION: [Full ready-to-post caption.',
-    ' Write in the brand voice from the brand guidelines.',
-    ' Include the hook in the first line — it must stop the scroll.',
-    ' 3-5 sentences max for Facebook. 1-3 sentences for Instagram.',
-    ' End with a soft CTA appropriate to the post type.]\n',
-    'HASHTAGS: [5-8 relevant hashtags — mix of local, industry, and topic-specific]\n',
-    'BEST TIME: [Day and time to post for maximum reach on this platform]\n\n',
+    '\n\nGenerate a complete WEEK ' + weekNum + ' Facebook content plan — exactly 5 posts.',
+    weekTheme ? ' This week\'s theme is: "' + weekTheme + '". Every post should reinforce this theme.' : '',
+    '\n\nALL POSTS ARE FACEBOOK POSTS. The buyer will cross-post to Instagram via Meta Business Suite — they don\'t need separate IG content. Build for Facebook.\n\n',
+    'For EACH of the 5 posts use EXACTLY this structure:\n\n',
+    'POST [N]\n',
+    'POST TYPE: [Reel / Video / Photo / Facebook Gallery / Text Post] — DO NOT use "Instagram Carousel" — use "Facebook Gallery" instead. A Facebook Gallery is a multi-photo post (up to 10 images, rectangular framing OK).\n',
+    'VISUAL DIRECTION: [Precise instruction — who to film/photograph, where, what they should be doing or saying. Specific enough that someone with no marketing experience can execute. For videos: include the exact opening line on-camera. For photos: describe the shot — subject, location, angle, what\'s in frame. For galleries: list the 5-7 specific photos to include in order.]\n',
+    'CAPTION: [Full ready-to-publish Facebook caption in the client\'s brand voice. Hook in the first line — pattern interrupt or specific claim. 3-5 sentences. End with a clear CTA appropriate to the post type. URLs/links are FINE — Facebook allows them in-caption.]\n',
+    'HASHTAGS: [Maximum 2 hashtags — only if they\'re local or branded. Facebook hashtags are mostly dead, so keep this minimal.]\n',
+    'CROSS-POST: [Yes / Yes (re-format as IG Reel) / No (Facebook only)] — Tell the buyer whether this post translates to Instagram cleanly. Reels = Yes always. Galleries = Yes (cap at 10 photos for IG). Text-heavy story posts = No.\n',
+    'BEST TIME: [Day of week + time, e.g., "Tuesday 7-9 PM"]\n\n',
     '---\n\n',
-    'Day 1: Introduce the business and the person behind it.',
-    ' Build immediate recognition and humanity.\n',
-    'Day 2: Lead with the single biggest operational differentiator.',
-    ' Make the competitor weakness obvious without naming them.\n',
-    'Day 3: Address the number 1 family fear directly.',
-    ' Show how this home specifically eliminates that fear.\n',
-    'Day 4: Community proof.',
-    ' Use their community involvement or a local tie to build belonging.\n',
-    'Day 5: Education post.',
-    ' Teach families something they did not know — related to their undersold service or differentiator.\n',
-    'Day 6: Social proof.',
-    ' A real client story, testimonial angle, or review highlight.',
-    ' If no specific story provided, write a realistic composite scenario and note it needs a real story inserted.\n',
-    'Day 7: Pre-need awareness.',
-    ' Plant the seed for pre-need planning without being morbid.',
-    ' Speak directly to the pre-planner persona trigger.',
+    'Use these 5 strategic angles for the 5 posts (in order):\n',
+    angles.map((a, i) => 'POST ' + (i + 1) + ': ' + a).join('\n'),
+    '\n\nReturn ONLY the 5 posts in the structure above. No preamble, no closing notes.',
   ].join('');
-  // 14 full Facebook posts with 5 fields each — needs the bigger token window.
-  generatedOutput.week1 = await callClaude(SYSTEM, w1prompt, { maxTokens: 8000 });
+  return callClaude(SYSTEM, prompt, { maxTokens: 4000 });
+}
+
+// Coordinator: fires 13 parallel calls (one per week) to build out the full
+// 13-week × 5-posts content plan. Stores each week's output as a string in
+// generatedOutput.week_posts[weekNum]. Pulls weekly themes from the already-
+// generated roadmap so each week's posts align with that week's theme.
+async function generateWeeklyPosts(ctx) {
+  // Extract weekly themes from the just-generated roadmap so each week's
+  // posts are anchored to its specific theme. Best-effort — if parsing
+  // returns thin, the per-week prompt still works without a theme.
+  const themes = parseRoadmapThemes(generatedOutput.roadmap || '');
+
+  // Fire all 13 weekly generations in parallel. Promise.allSettled means
+  // one week failing doesn't kill the others.
+  const tasks = [];
+  for (let n = 1; n <= 13; n++) {
+    tasks.push(
+      generateWeekPosts(ctx, n, themes[n] || '')
+        .then(text => ({ n, ok: true, text }))
+        .catch(err => ({ n, ok: false, err: err.message || String(err) }))
+    );
+  }
+  const results = await Promise.all(tasks);
+
+  // Silent retry pass for any that failed
+  const failed = results.filter(r => !r.ok);
+  if (failed.length) {
+    console.warn('[weekly_posts] retrying failed weeks:', failed.map(r => r.n));
+    const retries = await Promise.all(
+      failed.map(r =>
+        generateWeekPosts(ctx, r.n, themes[r.n] || '')
+          .then(text => ({ n: r.n, ok: true, text }))
+          .catch(err => ({ n: r.n, ok: false, err: err.message || String(err) }))
+      )
+    );
+    retries.forEach(r => {
+      const idx = results.findIndex(x => x.n === r.n);
+      if (idx >= 0) results[idx] = r;
+    });
+  }
+
+  // Persist whatever succeeded — partial success is much better than nothing
+  generatedOutput.week_posts = {};
+  results.forEach(r => { if (r.ok) generatedOutput.week_posts[r.n] = r.text; });
+
+  // Update the in-card sub-progress label as we run
+  const stillFailed = results.filter(r => !r.ok);
+  const subLabel = document.getElementById('gcard-weekly-sub');
+  if (subLabel) subLabel.textContent = (13 - stillFailed.length) + '/13 weeks';
+
+  // If 3+ weeks failed even after retry, throw so the runModule wrapper marks
+  // this card failed and the user sees a retry screen. 1-2 weeks failing is
+  // acceptable — better to ship 11 great weeks than block on 1.
+  if (stillFailed.length >= 3) {
+    throw new Error('Weekly content failed for ' + stillFailed.length + ' weeks: ' + stillFailed.map(r => 'Week ' + r.n).join(', '));
+  }
+}
+
+// Pull "WEEK N: <theme>" mentions from roadmap output. Returns { 1: 'theme', ... }.
+function parseRoadmapThemes(roadmap) {
+  const out = {};
+  if (!roadmap) return out;
+  const lines = roadmap.split('\n');
+  for (const raw of lines) {
+    const m = /^\s*#*\s*\**\s*week\s*(\d+)\s*[:\-—–]\s*(.+?)\s*\**\s*$/i.exec(raw);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      const theme = m[2].trim().replace(/^\*+|\*+$/g, '');
+      if (n >= 1 && n <= 13 && theme) out[n] = theme;
+    }
+  }
+  return out;
 }
 
 function showOutput() {
@@ -1815,13 +1919,24 @@ function renderPreneed() {
 }
 
 function renderWeek1() {
+  // Renders ALL 13 weeks of detailed posts inline below the roadmap.
+  // Each week collapses to its theme; user expands to see the 5 posts.
   const roadmapPanel = document.getElementById('panel-roadmap');
-  const w1div = document.createElement('div');
-  w1div.innerHTML = '<div style="margin-top:40px;padding-top:32px;border-top:1px solid var(--border);">'
-    + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">WEEK 1 — DONE FOR YOU CONTENT</div>'
-    + formatWeek1(generatedOutput.week1)
-    + '</div>';
-  roadmapPanel.appendChild(w1div);
+  const wp = generatedOutput.week_posts || {};
+  const weekKeys = Object.keys(wp).sort((a, b) => Number(a) - Number(b));
+  if (weekKeys.length === 0) return;
+  const wrap = document.createElement('div');
+  let html = '<div style="margin-top:40px;padding-top:32px;border-top:1px solid var(--border);">'
+    + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">13 Weeks · 5 Posts Each — Done For You</div>';
+  weekKeys.forEach(n => {
+    html += '<details style="margin-bottom:14px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">'
+      + '<summary style="cursor:pointer;padding:14px 18px;font-family:var(--font-display);font-size:18px;color:var(--text);">Week ' + n + '</summary>'
+      + '<div style="padding:6px 18px 18px">' + formatWeek1(wp[n]) + '</div>'
+      + '</details>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+  roadmapPanel.appendChild(wrap);
 }
 
 function renderBrand() {
@@ -2102,7 +2217,10 @@ function escAttr(s) {
     generatedOutput.scripts     = DEMO_OUTPUT_DATA.scripts;
     generatedOutput.preneed     = DEMO_OUTPUT_DATA.preneed;
     generatedOutput.roadmap     = DEMO_OUTPUT_DATA.roadmap;
-    generatedOutput.week1       = DEMO_OUTPUT_DATA.week1;
+    // Demo data was authored before the 13-week rebuild — wrap the old
+    // single-week sample as Week 1 of the new week_posts shape so demo mode
+    // still renders correctly. Real generations populate all 13.
+    generatedOutput.week_posts  = { 1: DEMO_OUTPUT_DATA.week1 };
     // Show output screen
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('progress-wrap').style.display = 'none';
