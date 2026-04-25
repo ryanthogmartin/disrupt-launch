@@ -1419,29 +1419,37 @@ function renderExecute(weekNum) {
   // Total tasks for this week — variable now (lifted the 4-task cap)
   const totalTasks = wk.tasks.length;
 
-  // Video Scripts library — global, same on every week. Lists ONLY scripts
-  // that haven't been recorded yet. Marking a video task done auto-records
-  // its linked script (cycleTask does the sync), so scripts fall off the
-  // list as the buyer ships their weekly video plan.
+  // Video Scripts library — global, same on every week. Two stacked
+  // sections: "to record" (unrecorded) and "completed" (recorded). The
+  // completed list keeps the script links live so a buyer can revisit a
+  // script later, riff on it, or re-record with different language. Each
+  // completed row has an "Undo" affordance to move it back to the to-record
+  // list if they checked it off by mistake.
   const allScripts = getAllVideoScripts();
   const unrecorded = allScripts.filter(s => !isScriptRecorded(s.num));
+  const recorded   = allScripts.filter(s =>  isScriptRecorded(s.num));
   let scriptsBlock = '';
   if (allScripts.length > 0) {
+    const renderRow = (s, isDone) => `
+      <div class="task-item" style="cursor:default;align-items:flex-start;${isDone?'opacity:.78':''}">
+        <div class="task-check" style="cursor:pointer;${isDone?'background:var(--green);color:#fff;border:none':'background:transparent;border:1.5px solid var(--green-dim)'};width:22px;height:22px;border-radius:5px;flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1" onclick="event.stopPropagation();toggleScriptRecorded(${s.num})" title="${isDone?'Un-mark as recorded':'Mark as recorded'}">${isDone?'✓':''}</div>
+        <div style="flex:1;cursor:pointer" onclick="openScriptForTask(${s.num})">
+          <div class="task-text" style="${isDone?'text-decoration:line-through;color:var(--muted)':''}">📹 Script #${s.num}: ${escHtml(s.title)}</div>
+          <div class="task-state-label">${escHtml([s.platform, s.runtime, s.source].filter(Boolean).join(' · ')) || 'Tap to open in Strategy'}</div>
+        </div>
+      </div>`;
     scriptsBlock = `<div class="week-scripts-extra" style="margin-top:24px">
       <span class="week-section-label">Video Scripts to Record · ${unrecorded.length} of ${allScripts.length} remaining</span>
       <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5">Your full library of video scripts. Tap a script to open it in Strategy. Marking a weekly video task as Done auto-removes the linked script — or check it manually here.</div>
       ${unrecorded.length === 0
         ? `<div class="no-wins">All ${allScripts.length} scripts recorded. Great work.</div>`
-        : `<div class="task-list">` + unrecorded.map(s =>
-            `<div class="task-item" style="cursor:default;align-items:flex-start">
-              <div class="task-check" style="cursor:pointer;background:transparent;border:1.5px solid var(--green-dim);width:22px;height:22px;border-radius:5px;flex:none" onclick="event.stopPropagation();toggleScriptRecorded(${s.num})" title="Mark as recorded"></div>
-              <div style="flex:1;cursor:pointer" onclick="openScriptForTask(${s.num})">
-                <div class="task-text">📹 Script #${s.num}: ${escHtml(s.title)}</div>
-                <div class="task-state-label">${escHtml([s.platform, s.runtime, s.source].filter(Boolean).join(' · ')) || 'Tap to open in Strategy'}</div>
-              </div>
-            </div>`
-          ).join('') + `</div>`
+        : `<div class="task-list">` + unrecorded.map(s => renderRow(s, false)).join('') + `</div>`
       }
+      ${recorded.length > 0 ? `
+        <span class="week-section-label" style="margin-top:24px;display:block">Completed Scripts · ${recorded.length} recorded</span>
+        <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5">Scripts you've already shot. Tap a row to re-open the script — useful if you want to re-record with different language. Tap the green check to move a script back to your "to record" list.</div>
+        <div class="task-list">` + recorded.map(s => renderRow(s, true)).join('') + `</div>
+      ` : ''}
     </div>`;
   }
 
