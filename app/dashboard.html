@@ -1399,43 +1399,43 @@ function renderExecute(weekNum) {
   const STATES = [0,'In Progress',2];
   const LABELS = ['Not started','In Progress','Done'];
 
-  // Pull scripts that belong to this week so we can link video tasks to the
-  // specific script. We pop scripts off the list as we match them so each
-  // script gets surfaced exactly once.
-  const weekScripts = (getScriptsByWeek()[weekNum] || []).slice();
-
   let tasksHtml = wk.tasks.map((txt,i) => {
     const state = tasks[i]||0;
     const cls = state===2?'done':state===1?'in-progress':'';
     const chk = state===2?'✓':state===1?'→':'';
-    let scriptLink = '';
-    if (taskIsVideo(txt) && weekScripts.length > 0) {
-      const s = weekScripts.shift();
-      // The Strategy tab Scripts section has element ids like script-card-N
-      // for jumping. Falling back to the section anchor if id not present.
-      scriptLink = `<a href="#" onclick="event.stopPropagation();openScriptForTask(${s.num});return false;" class="task-script-link">📹 Open Script #${s.num}: ${escHtml(s.title.slice(0,40))}${s.title.length>40?'…':''} →</a>`;
-    }
     return `<div class="task-item ${cls}" onclick="cycleTask(${weekNum},${i})">
       <div class="task-check">${chk}</div>
-      <div style="flex:1"><div class="task-text">${escHtml(txt)}</div><div class="task-state-label">${LABELS[state]}</div>${scriptLink}</div>
+      <div style="flex:1"><div class="task-text">${escHtml(txt)}</div><div class="task-state-label">${LABELS[state]}</div></div>
     </div>`;
   }).join('');
 
   // Total tasks for this week — variable now (lifted the 4-task cap)
   const totalTasks = wk.tasks.length;
 
-  // If there are scripts for this week beyond what we matched to tasks,
-  // surface them as a separate "Video Scripts for this week" block so the
-  // user can find every script tied to this week without hunting in Strategy.
+  // Video Scripts library — same on EVERY week. Lists scripts that haven't
+  // been recorded yet. Buyer checks each off as they record. Once checked,
+  // the script falls off the list (state persists in localStorage).
+  const allScripts = getAllVideoScripts();
+  const unrecorded = allScripts.filter(s => !isScriptRecorded(s.num));
   let scriptsBlock = '';
-  if (weekScripts.length > 0) {
-    scriptsBlock = `<div class="week-scripts-extra"><span class="week-section-label">Additional Video Scripts for This Week</span>
-      <div class="task-list">` + weekScripts.map(s =>
-        `<div class="task-item" style="cursor:pointer" onclick="openScriptForTask(${s.num})">
-          <div class="task-check" style="background:rgba(255,1,102,0.12);color:#FF0166">📹</div>
-          <div style="flex:1"><div class="task-text">Script #${s.num}: ${escHtml(s.title)}</div><div class="task-state-label">${escHtml(s.source || s.platform || 'Tap to open')}</div></div>
-        </div>`
-      ).join('') + `</div></div>`;
+  if (allScripts.length > 0) {
+    const recordedCount = allScripts.length - unrecorded.length;
+    scriptsBlock = `<div class="week-scripts-extra" style="margin-top:24px">
+      <span class="week-section-label">Video Scripts to Record · ${unrecorded.length} of ${allScripts.length} remaining</span>
+      <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5">Your full library of video scripts. Record at your own pace. Check each one off when you've shot it — checked scripts disappear from the list.</div>
+      ${unrecorded.length === 0
+        ? `<div class="no-wins">All ${allScripts.length} scripts recorded. Great work.</div>`
+        : `<div class="task-list">` + unrecorded.map(s =>
+            `<div class="task-item" style="cursor:default;align-items:flex-start">
+              <div class="task-check" style="cursor:pointer;background:transparent;border:1.5px solid var(--green-dim);width:22px;height:22px;border-radius:5px;flex:none" onclick="event.stopPropagation();toggleScriptRecorded(${s.num})" title="Mark as recorded"></div>
+              <div style="flex:1;cursor:pointer" onclick="openScriptForTask(${s.num})">
+                <div class="task-text">📹 Script #${s.num}: ${escHtml(s.title)}</div>
+                <div class="task-state-label">${escHtml([s.platform, s.runtime, s.source].filter(Boolean).join(' · ')) || 'Tap to open in Strategy'}</div>
+              </div>
+            </div>`
+          ).join('') + `</div>`
+      }
+    </div>`;
   }
 
   let badge = '';
@@ -1682,7 +1682,18 @@ function getClientWeeks() {
     // safe because no other section header in the roadmap prompt matches that
     // shape. We also tolerate markdown prefixes like "## " or "**".
     const cleaned = raw.replace(/^[#*\->\s]+/gm, ''); // strip leading markdown noise per line
-    const blocks = splitRepeating(cleaned, /^week\s*\d+\s*[:\-—–]/i);
+    const rawBlocks = splitRepeating(cleaned, /^week\s*\d+\s*[:\-—–]/i);
+    // splitRepeating's LAST block runs to EOF, which means Week 13 absorbs
+    // any trailing sections (REVIEW GENERATION STRATEGY, 90-DAY MILESTONES,
+    // etc). Truncate every block's content at the first non-week section
+    // header so each week stays in its own swim lane.
+    const NON_WEEK_HEADER = /^(REVIEW GENERATION STRATEGY|90-DAY MILESTONES|90 DAY MILESTONES|MILESTONES|CONTENT STRATEGY OVERVIEW|CONTENT PILLARS|PLATFORM STRATEGY|GROWTH TARGETS|ROI PROJECTION|SUCCESS METRICS|KEY ASSUMPTIONS|DAY\s*\d+\s*:)/i;
+    const blocks = rawBlocks.map(b => {
+      const lines = b.content.split('\n');
+      const cutIdx = lines.findIndex(l => NON_WEEK_HEADER.test(l.trim()));
+      if (cutIdx >= 0) return { header: b.header, content: lines.slice(0, cutIdx).join('\n') };
+      return b;
+    });
     const parsed = blocks.map(wb => {
       const numMatch = /^week\s*(\d+)\s*[:\-—–]/i.exec(wb.header);
       const num = numMatch ? parseInt(numMatch[1], 10) : null;
@@ -1721,12 +1732,10 @@ function getClientWeeks() {
       // Split posts block into discrete tasks. Handle: numbered (1. / 1)),
       // bulleted (• - * — –), or one-per-line. Strip leading list markers.
       const tasks = postsBlock.split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0)
-        .map(l => l.replace(/^\d+[.)]\s*/, '').replace(/^[•\-—–\*]\s*/, '').trim())
+        .map(l => l.trim().replace(/^\d+[.)]\s*/, '').replace(/^[•\-—–\*]\s*/, '').trim())
+        .filter(l => l.length > 2)
         // Drop any lingering subheaders like "POSTS:" if they slipped through
-        .filter(l => !/^posts?\s*[:：]?\s*$/i.test(l))
-        .filter(l => l.length > 8);
+        .filter(l => !/^posts?\s*[:：]?\s*$/i.test(l));
       return { num, theme, focus, tasks };
     }).filter(w => w.num && w.theme);
 
@@ -1760,15 +1769,15 @@ function getClientWeeks() {
   }
 }
 
-// Parse the Scripts module once and bucket each script by which week its
-// SOURCE: field references. e.g., SOURCE: "Week 1 Day 2 (Facebook Video)"
-// → bucket 1. Used by Execute tab to surface "Video #N — open script" on
-// video tasks. Returns { 1: [{num,title,source,platform}, ...], 2: [...] }.
-function getScriptsByWeek() {
-  if (SESSION._cachedScriptsByWeek) return SESSION._cachedScriptsByWeek;
+// Parse the Scripts module into a flat list. The previous "bucket by week"
+// approach was wrong — buyers don't shoot all of their videos in the week
+// a script happens to be tagged for. Treat scripts as a global library
+// the buyer works through at their own pace, with a "recorded" checkbox.
+function getAllVideoScripts() {
+  if (SESSION._cachedAllScripts) return SESSION._cachedAllScripts;
   const raw = getGenOutput('scripts');
-  const byWeek = {};
-  if (!raw) { SESSION._cachedScriptsByWeek = byWeek; return byWeek; }
+  const list = [];
+  if (!raw) { SESSION._cachedAllScripts = list; return list; }
   try {
     const blocks = splitRepeating(raw, /^script\s*\d+\s*:/i);
     blocks.forEach((sb, idx) => {
@@ -1777,37 +1786,41 @@ function getScriptsByWeek() {
       const title = sb.header.replace(/^script\s*\d+\s*:\s*/i, '').trim();
       const source = extractField(sb.content, 'SOURCE') || '';
       const platform = extractField(sb.content, 'PLATFORM') || '';
-      // Find any "Week N" mention in source
-      const wm = /week\s*(\d+)/i.exec(source);
-      const wk = wm ? parseInt(wm[1], 10) : null;
-      if (wk && wk >= 1 && wk <= 13) {
-        if (!byWeek[wk]) byWeek[wk] = [];
-        byWeek[wk].push({ num, title, source, platform });
-      }
+      const runtime = extractField(sb.content, 'RUNTIME') || '';
+      list.push({ num, title, source, platform, runtime });
     });
-  } catch (e) { console.warn('getScriptsByWeek parse failed:', e); }
-  SESSION._cachedScriptsByWeek = byWeek;
-  return byWeek;
+  } catch (e) { console.warn('getAllVideoScripts parse failed:', e); }
+  SESSION._cachedAllScripts = list;
+  return list;
 }
 
-// Heuristic: does this task call for a video?
-function taskIsVideo(taskText) {
-  return /\b(video|reel|film|shoot|recording|tiktok|youtube)\b/i.test(taskText || '');
+// LocalStorage flag for "this script has been recorded" — keyed per
+// (browser × client_id × script number). Survives reloads but resets on
+// a different browser, which is the right tradeoff for a v1 (no DB write).
+function scriptRecordedKey(scriptNum) {
+  const cid = SESSION.clientId || (SESSION.clientData && SESSION.clientData.id) || 'anon';
+  return 'disrupt-script-recorded::' + cid + '::' + scriptNum;
+}
+function isScriptRecorded(scriptNum) {
+  try { return localStorage.getItem(scriptRecordedKey(scriptNum)) === '1'; } catch(e) { return false; }
+}
+function toggleScriptRecorded(scriptNum) {
+  try {
+    const k = scriptRecordedKey(scriptNum);
+    if (localStorage.getItem(k) === '1') localStorage.removeItem(k);
+    else localStorage.setItem(k, '1');
+  } catch(e) {}
+  // Re-render the current execute view so the script removes from the list
+  if (typeof renderExecute === 'function' && SESSION.activeWeek) renderExecute(SESSION.activeWeek);
 }
 
-// Jump from an Execute task to the matching Video Script in the Strategy
-// tab. Switches tabs, scrolls to the scripts section, expands the matching
-// script card if collapsed.
+// Jump from a script row to the matching Video Script in the Strategy tab.
 function openScriptForTask(scriptNum) {
   const stratBtn = document.getElementById('tab-btn-strategy');
   if (stratBtn && typeof showTab === 'function') showTab('strategy', stratBtn);
-  // Wait one frame for the strategy tab to render, then scroll/expand.
   setTimeout(() => {
     const section = document.getElementById('section-scripts');
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // Expand the matching script card. The renderer creates them in the same
-    // order as scriptBlocks; the Nth card has data-script-num=N. If that
-    // attribute isn't there, fall back to the Nth .script-card.
     setTimeout(() => {
       let card = document.querySelector('.script-card[data-script-num="' + scriptNum + '"]');
       if (!card) {
@@ -1815,8 +1828,7 @@ function openScriptForTask(scriptNum) {
         card = cards[scriptNum - 1];
       }
       if (card) {
-        const body = card.querySelector('.script-body');
-        if (body && !card.classList.contains('expanded')) card.classList.add('expanded');
+        if (!card.classList.contains('expanded')) card.classList.add('expanded');
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 250);
@@ -1836,10 +1848,10 @@ function buildPlaceholderWeeks() {
   return arr;
 }
 
-// Parse 90-day case/review/preneed targets from the goals module's
-// "90-DAY TARGETS" section. Fall back to neutral 0 (UI shows "set your
-// goal" copy) rather than guessing — guessing was matching things like
-// "245 calls/year" baseline as a 90-day target, which was way off.
+// Build 90-day score targets. Trust the intake first — the buyer typed
+// their actual numbers in there. The AI's "GROWTH TARGETS" section is
+// inspirational copy, not a contract; parsing it has burned us by grabbing
+// 12-month numbers as 90-day targets. Use it only as a secondary signal.
 function getClientTargets() {
   if (isDemoClient()) {
     return { casesTarget: 27, reviewsTarget: 100, reviewsBaseline: 85, preneedTarget: 6 };
@@ -1853,65 +1865,34 @@ function getClientTargets() {
   const q55Match = /(\d{1,5})/.exec(a.q5_5 || '');
   if (q55Match) reviewsBaseline = parseInt(q55Match[1], 10);
 
-  let casesTarget = 0, reviewsTarget = 0, preneedTarget = 0;
-  const goalsRaw = getGenOutput('goals') || '';
-
-  if (goalsRaw) {
-    // Find the "90-DAY TARGETS" subsection. Supports many phrasings.
-    const goalsSec = parseSections(goalsRaw, [
-      '90-DAY TARGETS',
-      '90 DAY TARGETS',
-      'NINETY-DAY TARGETS',
-      '90-DAY GOALS',
-    ]);
-    const txt = goalsSec['90-DAY TARGETS']
-             || goalsSec['90 DAY TARGETS']
-             || goalsSec['NINETY-DAY TARGETS']
-             || goalsSec['90-DAY GOALS']
-             || '';
-    if (txt) {
-      const lines = txt.split('\n').map(l => l.trim()).filter(Boolean);
-      // Smart number extraction:
-      //   "Increase reviews from 112 to 130" → 130 (the target, not baseline)
-      //   "Add 8-10 cases above 245/year"    → 10 (upper bound of goal)
-      //   "Generate 30 pre-need consults"    → 30
-      // Skips integers preceded by baseline/current/of/year/from context.
-      const grabNum = (line) => {
-        const fromTo = /from\s+\d{1,5}\s+to\s+(\d{1,5})/i.exec(line);
-        if (fromTo) return parseInt(fromTo[1], 10);
-        const rangeDash = /\b(\d{1,5})\s*[-–—]\s*(\d{1,5})\b/.exec(line);
-        if (rangeDash) return parseInt(rangeDash[2], 10);
-        const rangeTo = /\b(\d{1,5})\s+to\s+(\d{1,5})\b/i.exec(line);
-        if (rangeTo) return parseInt(rangeTo[2], 10);
-        const re = /\b(\d{1,5})\b/g;
-        let m;
-        while ((m = re.exec(line)) !== null) {
-          const n = parseInt(m[1], 10);
-          if (n >= 2000 && n <= 2100) continue;            // year
-          const before = line.slice(Math.max(0, m.index - 30), m.index).toLowerCase();
-          if (/baseline|current|of\s+$|year/.test(before)) continue; // baseline reference
-          return n;
-        }
-        return 0;
-      };
-      for (const line of lines) {
-        const lower = line.toLowerCase();
-        if (!casesTarget && /\bcase|at-need\b/.test(lower) && !/review/.test(lower) && !/pre-?need/.test(lower)) {
-          casesTarget = grabNum(line);
-        }
-        if (!reviewsTarget && /\breview/.test(lower)) {
-          reviewsTarget = grabNum(line);
-        }
-        if (!preneedTarget && /pre-?need/.test(lower)) {
-          preneedTarget = grabNum(line);
-        }
-      }
+  // 90-day case target = annual case goal (q2_8) ÷ 4. q2_8 is the user's
+  // self-stated "additional cases per year that would make 12 months a
+  // success." A 90-day window is one quarter of that.
+  let casesTarget = 0;
+  const annualMatch = /(\d{1,4})/.exec(a.q2_8 || '');
+  if (annualMatch) {
+    const annual = parseInt(annualMatch[1], 10);
+    // Sanity bounds: skip year-shaped numbers; the goal should be < 1000
+    if (annual > 0 && annual < 1000) {
+      casesTarget = Math.max(1, Math.round(annual / 4));
     }
   }
 
-  // If reviews target wasn't in the goals output, build a safe fallback from
-  // the baseline (target = baseline + 15) so the UI shows progress correctly.
-  if (!reviewsTarget && reviewsBaseline) reviewsTarget = reviewsBaseline + 15;
+  // Reviews target = baseline + 15 (a reasonable 90-day gain); user can
+  // log their actual count and we'll show progress against this.
+  const reviewsTarget = reviewsBaseline ? reviewsBaseline + 15 : 0;
+
+  // Pre-need target — heuristic. q2_5 is the at-need / pre-need split.
+  // If they said e.g. "75% at-need / 25% pre-need" and want X more cases
+  // per year, ~25% of that growth would land in pre-need. /4 for 90 days.
+  let preneedTarget = 0;
+  const splitMatch = /(\d{1,2})\s*%\s*pre-?need/i.exec(a.q2_5 || '');
+  if (splitMatch && casesTarget > 0) {
+    const preneedPct = parseInt(splitMatch[1], 10) / 100;
+    // Pre-need leads ratio is higher than contracts — multiply by 2 to get
+    // inquiries (you don't close every lead).
+    preneedTarget = Math.max(1, Math.round(casesTarget * preneedPct * 2));
+  }
 
   const targets = { casesTarget, reviewsTarget, reviewsBaseline, preneedTarget };
   SESSION._cachedClientTargets = targets;
