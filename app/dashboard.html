@@ -1050,6 +1050,8 @@ function renderHome() {
   const clientName = cd ? (cd.name || 'Your Practice') : 'Your Practice';
   const m = SESSION.metrics;
   const taskProg = getTaskProgress();
+  const clientWeeks = getClientWeeks();
+  const targets = getClientTargets();
 
   // Wins
   let allWins = [];
@@ -1066,7 +1068,7 @@ function renderHome() {
   const catchupHtml = prevWeek && prevDone < 4 ? `
     <div class="action-card catchup">
       <div class="action-card-label">Catch Up — Week ${prevWeek}</div>
-      <div class="action-card-week">Week ${prevWeek}: ${WEEKS[prevWeek-1].theme}</div>
+      <div class="action-card-week">Week ${prevWeek}: ${escHtml(clientWeeks[prevWeek-1].theme)}</div>
       <div class="action-card-theme">${4-prevDone} task${4-prevDone>1?'s':''} still pending from last week.</div>
       <div class="action-card-tasks">${prevDone}/4 complete</div>
       <button class="action-btn amber" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${prevWeek})">Finish Week ${prevWeek} →</button>
@@ -1093,30 +1095,30 @@ function renderHome() {
       </div>
     </div>
     <div class="scorecard">
-      <div class="score-card ${m.cases>=12?'on-track':'behind'}">
+      <div class="score-card ${targets.casesTarget && m.cases>=Math.floor(targets.casesTarget*0.45)?'on-track':'behind'}">
         <span class="score-label">Cases — 90 Days</span>
-        <div class="score-nums"><span class="score-current">${m.cases||0}</span><span class="score-sep">/</span><span class="score-target">27</span></div>
-        <div class="score-sub">Goal: 3 additional cases/mo</div>
-        <span class="score-status ${m.cases>=12?'status-green':'status-amber'}">${m.cases>=12?'On Track':'Building'}</span>
+        <div class="score-nums"><span class="score-current">${m.cases||0}</span>${targets.casesTarget ? `<span class="score-sep">/</span><span class="score-target">${targets.casesTarget}</span>` : ''}</div>
+        <div class="score-sub">${targets.casesTarget ? 'Goal: ' + Math.max(1, Math.round(targets.casesTarget/3)) + ' additional cases/mo' : 'Set your 90-day case target in Strategy → Goals'}</div>
+        <span class="score-status ${targets.casesTarget && m.cases>=Math.floor(targets.casesTarget*0.45)?'status-green':'status-amber'}">${targets.casesTarget && m.cases>=Math.floor(targets.casesTarget*0.45)?'On Track':'Building'}</span>
       </div>
-      <div class="score-card ${m.reviews>=100?'on-track':'behind'}">
+      <div class="score-card ${targets.reviewsTarget && m.reviews>=targets.reviewsTarget?'on-track':'behind'}">
         <span class="score-label">Google Reviews</span>
-        <div class="score-nums"><span class="score-current">${m.reviews||85}</span><span class="score-sep">/</span><span class="score-target">100</span></div>
-        <div class="score-sub">Baseline: 85 at launch</div>
-        <span class="score-status ${m.reviews>=100?'status-green':m.reviews>=90?'status-amber':'status-neutral'}">${m.reviews>=100?'Goal Hit':m.reviews>=90?'Close':'In Progress'}</span>
+        <div class="score-nums"><span class="score-current">${m.reviews||targets.reviewsBaseline||0}</span>${targets.reviewsTarget ? `<span class="score-sep">/</span><span class="score-target">${targets.reviewsTarget}</span>` : ''}</div>
+        <div class="score-sub">${targets.reviewsBaseline ? 'Baseline: ' + targets.reviewsBaseline + ' at launch' : 'Update your current count below'}</div>
+        <span class="score-status ${targets.reviewsTarget && m.reviews>=targets.reviewsTarget?'status-green':targets.reviewsTarget && m.reviews>=Math.floor(targets.reviewsTarget*0.9)?'status-amber':'status-neutral'}">${targets.reviewsTarget && m.reviews>=targets.reviewsTarget?'Goal Hit':targets.reviewsTarget && m.reviews>=Math.floor(targets.reviewsTarget*0.9)?'Close':'In Progress'}</span>
       </div>
-      <div class="score-card ${m.preneed>=6?'on-track':'behind'}">
+      <div class="score-card ${targets.preneedTarget && m.preneed>=targets.preneedTarget?'on-track':'behind'}">
         <span class="score-label">Pre-Need Inquiries</span>
-        <div class="score-nums"><span class="score-current">${m.preneed||0}</span><span class="score-sep">/</span><span class="score-target">6</span></div>
-        <div class="score-sub">2 qualified leads per month</div>
-        <span class="score-status ${m.preneed>=6?'status-green':m.preneed>=3?'status-amber':'status-neutral'}">${m.preneed>=6?'On Track':m.preneed>=3?'Progressing':'Early Stage'}</span>
+        <div class="score-nums"><span class="score-current">${m.preneed||0}</span>${targets.preneedTarget ? `<span class="score-sep">/</span><span class="score-target">${targets.preneedTarget}</span>` : ''}</div>
+        <div class="score-sub">${targets.preneedTarget ? 'Roughly ' + Math.max(1, Math.round(targets.preneedTarget/3)) + ' qualified leads per month' : 'Set your 90-day pre-need target in Strategy → Goals'}</div>
+        <span class="score-status ${targets.preneedTarget && m.preneed>=targets.preneedTarget?'status-green':targets.preneedTarget && m.preneed>=Math.floor(targets.preneedTarget*0.5)?'status-amber':'status-neutral'}">${targets.preneedTarget && m.preneed>=targets.preneedTarget?'On Track':targets.preneedTarget && m.preneed>=Math.floor(targets.preneedTarget*0.5)?'Progressing':'Early Stage'}</span>
       </div>
     </div>
     <div class="week-actions">
       <div class="action-card current-week">
         <div class="action-card-label">Current Week</div>
-        <div class="action-card-week">Week ${curWeek}: ${WEEKS[curWeek-1].theme}</div>
-        <div class="action-card-theme">${WEEKS[curWeek-1].focus}</div>
+        <div class="action-card-week">Week ${curWeek}: ${escHtml(clientWeeks[curWeek-1].theme)}</div>
+        <div class="action-card-theme">${escHtml(clientWeeks[curWeek-1].focus)}</div>
         <div class="action-card-tasks">${curDone}/4 tasks complete</div>
         <button class="action-btn green" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${curWeek})">Go to Week ${curWeek} →</button>
       </div>
@@ -1131,7 +1133,7 @@ function renderHome() {
         </div>
         <div class="metric-input-card">
           <span class="metric-input-label">Google Reviews</span>
-          <input class="metric-input-num" type="number" min="0" value="${m.reviews||85}" id="m-reviews" oninput="updateMetric('reviews',this.value)">
+          <input class="metric-input-num" type="number" min="0" value="${m.reviews||targets.reviewsBaseline||0}" id="m-reviews" oninput="updateMetric('reviews',this.value)">
         </div>
         <div class="metric-input-card">
           <span class="metric-input-label">Pre-Need Inquiries</span>
@@ -1363,11 +1365,12 @@ async function submitDeleteClient() {
 function renderExecute(weekNum) {
   SESSION.activeWeek = weekNum;
   const curWeek = getCurrentWeek();
-  const wk = WEEKS[weekNum-1];
+  const clientWeeks = getClientWeeks();
+  const wk = clientWeeks[weekNum-1];
   const wd = SESSION.weekProgress[weekNum] || {tasks:[0,0,0,0],wins:''};
 
   // Pill nav
-  let pillsHtml = WEEKS.map(w => {
+  let pillsHtml = clientWeeks.map(w => {
     const wwd = SESSION.weekProgress[w.num] || {tasks:[0,0,0,0]};
     const done = wwd.tasks.filter(t=>t===2).length;
     const missed = w.num < curWeek && done < 4;
@@ -1620,6 +1623,122 @@ function getGenOutput(moduleKey) {
   if (!out) return null;
   const v = out[moduleKey];
   return (typeof v === 'string' && v.trim().length > 40) ? v : null;
+}
+
+// Returns the active client's 13-week roadmap. For demo/booth: the hardcoded
+// `WEEKS` constant (sample content). For real clients: parsed from their
+// generated roadmap module so Home + Execute show their actual themes/tasks,
+// not "Why The Building Matters / Adam / 115-year story" demo data.
+function getClientWeeks() {
+  if (isDemoClient()) return WEEKS;
+  if (SESSION._cachedClientWeeks) return SESSION._cachedClientWeeks;
+  const raw = getGenOutput('roadmap');
+  if (!raw) {
+    // No generated roadmap yet — fall back to a neutral 13-week placeholder
+    // (do NOT leak the hardcoded demo WEEKS to a real client).
+    return buildPlaceholderWeeks();
+  }
+  try {
+    const sec = parseSections(raw, [
+      'WEEKLY THEMES — MONTHS 1-3',
+      'WEEKLY THEMES - MONTHS 1-3',
+      'WEEKLY THEMES',
+    ]);
+    const weeklyTxt = sec['WEEKLY THEMES — MONTHS 1-3']
+                   || sec['WEEKLY THEMES - MONTHS 1-3']
+                   || sec['WEEKLY THEMES']
+                   || '';
+    const blocks = splitRepeating(weeklyTxt, /^week\s*\d+\s*:/i);
+    const parsed = blocks.map(wb => {
+      const numMatch = /^week\s*(\d+)\s*:/i.exec(wb.header);
+      const num = numMatch ? parseInt(numMatch[1], 10) : null;
+      const theme = wb.header.replace(/^week\s*\d+\s*:\s*/i, '').trim();
+      const focus = extractField(wb.content, 'FOCUS')
+                 || extractField(wb.content, 'STRATEGIC FOCUS')
+                 || '';
+      const postsBlock = extractField(wb.content, 'POSTS') || '';
+      // Split posts block into discrete tasks: numbered list, bullets, or lines.
+      const tasks = postsBlock.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        // Strip leading numerals or bullets before checking length
+        .map(l => l.replace(/^\d+[.)]\s*/, '').replace(/^[•\-—–\*]\s*/, '').trim())
+        .filter(l => l.length > 8);
+      return { num, theme, focus, tasks };
+    }).filter(w => w.num && w.theme);
+
+    // Build the 13-slot output, padding any missing weeks with a placeholder.
+    const final = [];
+    for (let i = 1; i <= 13; i++) {
+      const found = parsed.find(w => w.num === i);
+      if (found && found.theme) {
+        // Pad/trim tasks to exactly 4 (matches weekProgress.tasks[0..3] schema).
+        const tasks = (found.tasks || []).slice(0, 4);
+        while (tasks.length < 4) tasks.push('Add a task here in your roadmap PDF.');
+        final.push({ num: i, theme: found.theme, focus: found.focus, tasks });
+      } else {
+        final.push({
+          num: i,
+          theme: 'Week ' + i,
+          focus: 'Detailed weekly theme will appear here once your roadmap is fully released.',
+          tasks: ['Theme details still loading.', 'Refresh in a moment if just released.', 'Or contact support@disruptmedia.co.', 'We\'ll have this resolved fast.'],
+        });
+      }
+    }
+    SESSION._cachedClientWeeks = final;
+    return final;
+  } catch(e) {
+    console.warn('getClientWeeks parse failed:', e);
+    return buildPlaceholderWeeks();
+  }
+}
+
+function buildPlaceholderWeeks() {
+  const arr = [];
+  for (let i = 1; i <= 13; i++) {
+    arr.push({
+      num: i,
+      theme: 'Week ' + i,
+      focus: 'Your roadmap is still being prepared. Refresh in a moment, or contact support@disruptmedia.co if this persists.',
+      tasks: ['Roadmap not loaded.', 'Refresh the page.', 'Contact support if it persists.', 'support@disruptmedia.co'],
+    });
+  }
+  return arr;
+}
+
+// Pulls score targets + baselines from generated goals + intake answers.
+// Falls back to the hardcoded sample numbers only for the demo client.
+function getClientTargets() {
+  if (isDemoClient()) {
+    return { casesTarget: 27, reviewsTarget: 100, reviewsBaseline: 85, preneedTarget: 6 };
+  }
+  if (SESSION._cachedClientTargets) return SESSION._cachedClientTargets;
+  const cd = SESSION.viewingClientData || SESSION.clientData;
+  const a = (cd && cd.intake_answers) || {};
+
+  // Reviews baseline = first integer in q5_5 ("112 reviews, 4.9 stars" → 112)
+  let reviewsBaseline = 0;
+  const q55 = a.q5_5 || '';
+  const m = /(\d{1,5})/.exec(q55);
+  if (m) reviewsBaseline = parseInt(m[1], 10);
+
+  // Targets from generated goals if parseable. Otherwise leave 0 — the UI
+  // will treat them as "set your goal" rather than show fake demo numbers.
+  let casesTarget = 0, reviewsTarget = 0, preneedTarget = 0;
+  const goalsRaw = getGenOutput('goals') || '';
+  const numAfter = (label) => {
+    const re = new RegExp(label + '[^\\n]*?(\\d{1,5})', 'i');
+    const hit = re.exec(goalsRaw);
+    return hit ? parseInt(hit[1], 10) : 0;
+  };
+  // Heuristics: look for case/review/preneed targets in the goals output
+  casesTarget    = numAfter('case[s]?\\s*target') || numAfter('90.day\\s*case') || numAfter('additional\\s*case') || 0;
+  reviewsTarget  = numAfter('review[s]?\\s*target') || numAfter('review\\s*goal') || (reviewsBaseline ? reviewsBaseline + 15 : 0);
+  preneedTarget  = numAfter('pre.need\\s*target') || numAfter('pre.need\\s*goal') || numAfter('pre.need\\s*inquir') || 0;
+
+  const targets = { casesTarget, reviewsTarget, reviewsBaseline, preneedTarget };
+  SESSION._cachedClientTargets = targets;
+  return targets;
 }
 
 // True only for the demo client (?demo=true / ?booth=true). Real clients who
@@ -2389,6 +2508,7 @@ function renderStrategyRoadmap() {
   </div>`;
 
   if (!raw && !week1Raw) {
+    if (!isDemoClient()) return strategyPendingPlaceholder('90-Day Roadmap', '13 Weeks. One Direction.');
     return wrap(`
       <div style="overflow-x:auto;">
         <table class="week-strat-table">
