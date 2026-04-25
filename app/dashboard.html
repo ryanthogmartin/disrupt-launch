@@ -501,9 +501,18 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 }
 
 /* First-time client onboarding tour — fires once per (browser × client). */
-.fto-overlay{position:fixed;inset:0;background:rgba(15,11,12,0.72);z-index:9000;display:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+/* Overlay is a transparent click-blocker. The dim effect is created entirely
+   by the spotlight's massive box-shadow (extends 9999px outward), which
+   leaves the spotlight rectangle itself UNDIMMED — so the highlighted tab
+   stays fully visible while everything around it is darkened. */
+.fto-overlay{position:fixed;inset:0;background:transparent;z-index:9000;display:none;}
 .fto-overlay.show{display:block;}
-.fto-spotlight{position:absolute;border:2px solid var(--pink,#FF0166);border-radius:10px;box-shadow:0 0 0 9999px rgba(15,11,12,0.72),0 0 24px rgba(255,1,102,0.55);transition:all 0.28s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+/* Spotlight snaps to position instantly. The CSS transition (was 0.28s)
+   was getting interrupted by rapid top/left/width/height changes when
+   stepping through the tour, leaving the spotlight visually stuck on the
+   previous tab while the popover advanced. Snap-to-position is also
+   cleaner UX — the user clearly sees WHICH thing got highlighted. */
+.fto-spotlight{position:absolute;border:3px solid var(--pink,#FF0166);border-radius:10px;box-shadow:0 0 0 9999px rgba(15,11,12,0.78),0 0 28px rgba(255,1,102,0.65);pointer-events:none;z-index:9000;background:transparent;}
 .fto-popover{position:absolute;background:#fff;color:#1A1A1A;border-radius:12px;padding:22px 24px;width:320px;max-width:calc(100vw - 32px);box-shadow:0 24px 64px rgba(0,0,0,0.45);z-index:9001;transition:all 0.28s cubic-bezier(.4,0,.2,1);}
 .fto-eyebrow{font-family:var(--font-mono,'DM Mono',monospace);font-size:10px;color:#FF0166;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:700;}
 .fto-title{font-family:var(--font-display,'Bebas Neue',sans-serif);font-size:24px;line-height:1.1;color:#0F0B0C;margin-bottom:10px;}
