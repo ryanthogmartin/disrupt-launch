@@ -1134,16 +1134,16 @@ function buildQuestion(q) {
   wrap.className = 'q-block';
   wrap.id = 'qblock-' + q.id;
 
-  let labelHtml = `<label class="q-label" for="${q.id}">${q.label}${q.challenge ? '<span class="key-badge">KEY</span>' : ''}</label>`;
-  if (q.hint) labelHtml += `<p class="q-hint">${q.hint}</p>`;
+  let labelHtml = `<label class="q-label" for="${q.id}">${escHtml(q.label)}${q.challenge ? '<span class="key-badge">KEY</span>' : ''}</label>`;
+  if (q.hint) labelHtml += `<p class="q-hint">${escHtml(q.hint)}</p>`;
 
   let inputHtml = '';
   const val = answers[q.id];
 
   if (q.type === 'text') {
-    inputHtml = `<input type="text" id="${q.id}" placeholder="${q.ph || ''}" value="${escHtml(val || '')}" oninput="saveAnswer('${q.id}', this.value)">`;
+    inputHtml = `<input type="text" id="${q.id}" placeholder="${escAttr(q.ph || '')}" value="${escAttr(val || '')}" oninput="saveAnswer('${q.id}', this.value)">`;
   } else if (q.type === 'textarea') {
-    inputHtml = `<textarea id="${q.id}" placeholder="${q.ph || ''}" oninput="saveAnswer('${q.id}', this.value)">${escHtml(val || '')}</textarea>`;
+    inputHtml = `<textarea id="${q.id}" placeholder="${escAttr(q.ph || '')}" oninput="saveAnswer('${q.id}', this.value)">${escHtml(val || '')}</textarea>`;
   } else if (q.type === 'radio') {
     inputHtml = '<div class="option-list">' + q.opts.map(opt => {
       const sel = val === opt;
