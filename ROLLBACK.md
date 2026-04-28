@@ -220,7 +220,7 @@ Then **actually** email them when it's fixed. Keep it short:
 
 Run through this once. If anything is unchecked, fix it before the next conference.
 
-- [ ] UptimeRobot (or equivalent) pinging `/health` every 5 min, alerting `NOTIFY_EMAIL` on non-200
+- [x] UptimeRobot pinging `/health` every 5 min with keyword check `"ok":true`, alerting `NOTIFY_EMAIL` on failure (set up 2026-04-28)
 - [ ] You can log into Cloudflare dashboard from your phone
 - [ ] You can log into Netlify dashboard from your phone
 - [ ] You can log into Supabase dashboard from your phone
