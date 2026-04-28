@@ -237,6 +237,7 @@ Run through this once. If anything is unchecked, fix it before the next conferen
 After every successful deploy, `npx wrangler deploy` prints `Current Version ID:`. Save the most recent stable IDs here so you can roll back to a known-good version without hunting through the list. Format:
 
 ```
+2026-04-28  fbbc0c09-0546-480b-8220-04ae88d2d174  — fix Guided double-email (deliver no longer fires client email)
 2026-04-25  91fa63bc-801d-4708-9538-f94f5cf05542  — week_posts.N admin save-module
 2026-04-25  7a67e939-a0ce-48cf-a299-82685c3124fa  — public signup locked down
 2026-04-25  7d712593-facd-4123-9093-d2204a058557  — longer 429 backoff
