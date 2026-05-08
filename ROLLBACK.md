@@ -177,6 +177,13 @@ If a SQL update went wrong and affected many clients (rare — would have to be 
 # Live worker traffic
 cd ~/Desktop/disrupt-worker && npx wrangler tail --format pretty
 
+# Tagged logs for hot paths (pipe tail through grep):
+#   [stripe]    every Stripe webhook event — id, type, dedup status, tier, client
+#   [complete]  every intake-complete + generation — clientId, tier, email fired
+#   [release]   every admin Release-to-client — adminId, clientId, email status
+# Example: which email fired for a buyer?
+#   wrangler tail | grep "\[complete\]"
+
 # Health probe
 curl https://disrupt-proxy.disruptmedia.workers.dev/health
 
@@ -237,6 +244,7 @@ Run through this once. If anything is unchecked, fix it before the next conferen
 After every successful deploy, `npx wrangler deploy` prints `Current Version ID:`. Save the most recent stable IDs here so you can roll back to a known-good version without hunting through the list. Format:
 
 ```
+2026-05-07  3f18191d-83e6-4c14-9a5e-b0e1b5fa2067  — structured logs on hot paths ([stripe], [complete], [release])
 2026-04-30  085a2b83-dd01-4077-af5a-501cada8c18f  — Stripe webhook idempotency persisted to stripe_events table
 2026-04-28  fbbc0c09-0546-480b-8220-04ae88d2d174  — fix Guided double-email (deliver no longer fires client email)
 2026-04-25  91fa63bc-801d-4708-9538-f94f5cf05542  — week_posts.N admin save-module
