@@ -244,7 +244,8 @@ Run through this once. If anything is unchecked, fix it before the next conferen
 After every successful deploy, `npx wrangler deploy` prints `Current Version ID:`. Save the most recent stable IDs here so you can roll back to a known-good version without hunting through the list. Format:
 
 ```
-2026-06-12  6bf7b085-6748-4b18-95a0-4b3dafbf2d9b  — launch hardening: session-gated /ai+/deliver, pv session revocation, per-email lockout, PBKDF2 300k, fetch timeouts, dup-email guard. NOTE: DISRUPT_TOKEN rotated to dsk_… this deploy; old disrupt-2026-key burned. Requires migration 001 (auth_attempts, unique email index).
+2026-06-12  7d82ba83-01ee-4f09-8bcb-ec9ccc099e6e  — CURRENT STABLE. PBKDF2 capped at 100k (Workers ceiling; 300k threw and broke account creation). Roll back to THIS, not 6bf7b085.
+2026-06-12  6bf7b085-6748-4b18-95a0-4b3dafbf2d9b  — ⚠️ DO NOT USE: launch hardening but PBKDF2=300k breaks complete-setup/reset/signup. Superseded by 7d82ba83. (Session-gated /ai+/deliver, pv revocation, per-email lockout, fetch timeouts, dup-email guard. DISRUPT_TOKEN rotated to dsk_… here; old disrupt-2026-key burned. Requires migration 001.)
 2026-05-07  3f18191d-83e6-4c14-9a5e-b0e1b5fa2067  — structured logs on hot paths ([stripe], [complete], [release])
 2026-04-30  085a2b83-dd01-4077-af5a-501cada8c18f  — Stripe webhook idempotency persisted to stripe_events table
 2026-04-28  fbbc0c09-0546-480b-8220-04ae88d2d174  — fix Guided double-email (deliver no longer fires client email)
