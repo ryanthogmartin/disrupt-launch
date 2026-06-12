@@ -628,7 +628,9 @@ textarea { resize: vertical; min-height: 96px; }
 //   PROXY_URL   → your Worker URL, e.g. https://disrupt-proxy.YOUR-SUBDOMAIN.workers.dev
 //   PROXY_TOKEN → the DISRUPT_TOKEN secret you set in the Cloudflare Dashboard
 const PROXY_URL   = 'https://disrupt-proxy.disruptmedia.workers.dev';
-const PROXY_TOKEN = 'disrupt-2026-key';
+// Page-level shield only — /ai and /deliver additionally require the buyer's
+// session JWT server-side, so this value being view-source-visible is fine.
+const PROXY_TOKEN = 'dsk_4a864e32aa798dd67f896c98a9bfe5e69f27d4a6ffae46ad';
 
 // All data access goes through the Worker — the page never talks to
 // Supabase directly. (A legacy direct-REST helper was removed here.)
@@ -1387,6 +1389,20 @@ window.addEventListener('beforeunload', function (e) {
 });
 
 async function startGeneration() {
+  // Live generation requires a paid session — /ai is gated server-side on the
+  // session JWT. Demo prospects get the canned Heritage strategy instead of
+  // burning real AI calls; anyone else without a session is sent to log in.
+  const sess = loadSession();
+  if (!sess || !sess.token) {
+    const p = new URLSearchParams(location.search);
+    if ((p.get('demo') === 'true' || p.get('tour') === 'true') && typeof window.demoSkipToOutput === 'function') {
+      window.demoSkipToOutput();
+      return;
+    }
+    alert('Your session has expired. Please log in again — your answers are saved.');
+    location.replace('/?login=1');
+    return;
+  }
   _generationInFlight = true;
   document.getElementById('screen-q').classList.remove('active');
   document.getElementById('progress-wrap').style.display = 'none';
@@ -1561,6 +1577,7 @@ async function callClaude(systemPrompt, userPrompt, opts) {
       max_tokens: maxTokens,
       system:     systemPrompt,
       messages:   [{ role: 'user', content: userPrompt }],
+      token:      (loadSession() || {}).token || '',
     }),
   });
   if (!res.ok) { let err = {}; try { err = await res.json(); } catch(e) {} throw new Error(err.error?.message || 'Server error ' + res.status); }
@@ -1680,7 +1697,10 @@ function goBackToForm() {
 }
 
 function deliverToDisrupt() {
-  // Fire-and-forget: emails answers + full output to you, logs to Google Sheets
+  // Fire-and-forget: emails answers + full output to you, logs to Google Sheets.
+  // Requires a session server-side — demo/tour visits never fire it.
+  const s = loadSession();
+  if (!s || !s.token) return;
   try {
     fetch(PROXY_URL + '/deliver', {
       method: 'POST',
@@ -1691,6 +1711,7 @@ function deliverToDisrupt() {
         businessName: answers.q1_1 || 'Unknown',
         answers,
         output: generatedOutput,
+        token: s.token,
       }),
     });
   } catch(e) {

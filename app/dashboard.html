@@ -734,11 +734,6 @@ let SESSION = {
   activeWeek: 1
 };
 
-// ── CONSTANTS ────────────────────────────────────────────────────────────────
-const WEEKS = [{"num": 1, "theme": "Why the Building Matters", "focus": "Show the Victorian building as a competitive differentiator, not just a backdrop.", "tasks": ["Post photo of full exterior — best light, clean shot, no filters", "Film 60-second Facebook Reel: Adam walks the front entrance and tells the 115-year story", "Post Instagram carousel: 5 details inside the building families never notice", "Send Google review request texts to 2 recent families"]}, {"num": 2, "theme": "Aftercare Is Not a Brochure", "focus": "Introduce the grief program as proof of long-term relationship, not transactional service.", "tasks": ["Post Facebook photo album: Butterfly release event with testimonial quote overlay", "Film and post Instagram Reel: 30-second Widow/Widower Valentine's lunch montage", "Post Facebook photo post: Holiday remembrance service story, caption tells it, paired with a photo from the event", "Send Google review requests to 2 recent families via text"]}, {"num": 3, "theme": "The Suit at 2 AM", "focus": "Use the professional dress standard as a symbol of readiness and respect at any hour.", "tasks": ["Post candid photo of Adam in full suit — arriving, standing at entrance, or preparing", "Film Facebook Reel: Adam explains what it means to always be ready, no cutting corners", "Post Instagram story: What our families see when they call at 2 AM", "Send Google review requests to 2 recent families via text"]}, {"num": 4, "theme": "The Competitor Nobody Mentions", "focus": "Without naming names, position cheap as a risk families don't see coming.", "tasks": ["Post Facebook photo post: Family turned away story — caption tells it, paired with a warm photo of your team or front entrance", "Post Instagram graphic: Questions to ask ANY funeral home before you choose", "Film Facebook video: Maddison explains full-service vs. stripped-down options", "Send Google review requests to 2 recent families via text"]}, {"num": 5, "theme": "Cremation Is Not One Thing", "focus": "Demystify the range of cremation options and position Huff-Guthrie as the guide, not the salesperson.", "tasks": ["Post Facebook photo: Side-by-side visual of different cremation memorial options", "Film Instagram Reel: Maddison walks through cremation choices in plain language", "Post Facebook educational post: What we wish every family knew before choosing cremation", "Send Google review requests to 2 recent families via text"]}, {"num": 6, "theme": "111 Years of Showing Up", "focus": "Leverage legacy as proof of staying power and reinvestment, not nostalgia.", "tasks": ["Post Facebook throwback: Historical building photo paired with recent renovation photo", "Film and post Instagram Reel: Facility upgrade timeline — never stopped improving", "Post Facebook photo post: Legacy caption — paired with a side-by-side historical and current exterior shot", "Send Google review requests to 2 recent families via text"]}, {"num": 7, "theme": "Pre-Need Without the Pressure", "focus": "Introduce pre-planning as a gift to your family, not a sales pitch.", "tasks": ["Post Facebook photo: Warm image of a couple reviewing paperwork together — calm, confident", "Film Instagram Reel: Adam answers why you would plan your funeral now", "Post Facebook educational post: The 3 things pre-planning actually does for your family", "Send Google review requests to 2 recent families via text"]}, {"num": 8, "theme": "The Widow Who Called at Midnight", "focus": "Use anonymized client story to show emotional availability and response quality.", "tasks": ["Film Facebook video: Adam tells the midnight call story (anonymized)", "Post Instagram story series: What a real first call sounds like — 5 slides", "Post Facebook photo post: Midnight call story — caption tells it, paired with a photo of the building lit at night", "Send Google review requests to 2 recent families via text"]}, {"num": 9, "theme": "Veterans Deserve More", "focus": "Demonstrate the specific care, ceremony, and expertise Huff-Guthrie brings to veteran services.", "tasks": ["Post Facebook photo: Flag ceremony or veteran tribute image — dignified and specific", "Film Instagram Reel: Adam explains what Huff-Guthrie does that most homes skip for veteran services", "Post Facebook post: What we believe every veteran family deserves — with photo", "Send Google review requests to 2 recent families via text"]}, {"num": 10, "theme": "What Boujee Actually Means", "focus": "Own the expensive perception by reframing premium as earned, not elitist.", "tasks": ["Film Facebook video: Adam addresses the most expensive funeral home label directly and confidently", "Post Instagram carousel: Facility comparisons with captions explaining what the investment buys", "Post Facebook photo post: Premium value caption — paired with a facility detail shot (chandelier, chapel, architectural feature)", "Send Google review requests to 2 recent families via text"]}, {"num": 11, "theme": "The Paint Class Nobody Expected", "focus": "Use the grief support events as proof of community presence and emotional investment.", "tasks": ["Post Facebook photo album: Paint class or grief event — real people, real moments", "Film Instagram Reel: Maddison explains why they run grief support events no one else does", "Post Facebook post: Why we host events that have nothing to do with funerals — with event photo", "Send Google review requests to 2 recent families via text"]}, {"num": 12, "theme": "The Chapel Nobody Else Has", "focus": "Reinforce the full chapel as the tangible differentiator for large services.", "tasks": ["Film Facebook video: Chapel walk-through with Adam — capacity, A/V technology, why it matters", "Post Instagram story poll: Does your funeral home have a full chapel", "Post Facebook photo post: Chapel capacity story — caption tells it, paired with a wide-angle chapel photo during service setup", "Send Google review requests to 2 recent families via text"]}, {"num": 13, "theme": "The Next 111 Years Start Now", "focus": "Close the 90-day chapter with a forward-looking statement of commitment and momentum.", "tasks": ["Film Facebook video: Adam and Maddison together — reflecting on the quarter, looking ahead", "Post Instagram carousel: Best moments from the 90 days — mini highlight reel", "Post Facebook photo post: 111 years down. Here is what comes next — with the full building exterior", "Send Google review requests to 2 recent families via text"]}]
-
-const DISRUPT_NOTES = ["Lead with the building this week. It is your most under-leveraged visual asset. Shoot it like a character, not a backdrop.", "The grief program is your secret weapon. Most funeral homes talk about aftercare in brochures. You do it. Show that.", "The suit story is deceptively powerful. It is not about clothes — it is about what your standard communicates to a family calling at 2 AM.", "This is your stealth week. You are not attacking competitors by name — you are making families think harder before choosing anyone.", "Cremation education builds trust before the arrangement conference. Families who understand options arrive ready to decide, not overwhelmed.", "Legacy content works when it is honest. Outlasting recessions is not bragging — it is proof. Own it.", "Pre-need content should never feel like a pitch. Lead with the emotional benefit: peace of mind, fewer decisions for family.", "The midnight call story is your most human piece of content this quarter. Do not rush it. Let Adam tell it in his own words.", "Veterans content has its own audience and its own emotion. Do not treat it as a generic service — speak directly to veteran families.", "Reframing price is the hardest content to get right. Adam needs to own the premium positioning without apology. Coach him before filming.", "The paint class content works because it is unexpected. Lead with that. A funeral home that runs a paint class is the headline.", "The chapel is your most defensible competitive advantage. No one else in your market has it. Make families feel the difference.", "Week 13 is about momentum, not closure. The message is not we are done — it is this is just the beginning."]
-
 // ── SAVE TIMERS ──────────────────────────────────────────────────────────────
 let metricsSaveTimer = null;
 let winsSaveTimers = {};
@@ -854,6 +849,8 @@ async function loadDashboardData() {
 }
 
 async function saveWeekProgress(weekNum) {
+  // Demo mode has no real session/token — keep changes local, never hit the API.
+  if (isDemoClient()) return;
   const cid = SESSION.viewingClientId || SESSION.clientId;
   const wd = SESSION.weekProgress[weekNum] || { tasks:[0,0,0,0], wins:'' };
   const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
@@ -863,6 +860,8 @@ async function saveWeekProgress(weekNum) {
 }
 
 async function saveMetrics() {
+  // Demo mode has no real session/token — keep changes local, never hit the API.
+  if (isDemoClient()) return;
   const cid = SESSION.viewingClientId || SESSION.clientId;
   const m = SESSION.metrics;
   const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
@@ -1060,10 +1059,20 @@ function getCurrentWeek() {
 }
 
 function getTaskProgress() {
-  let done=0, total=0;
+  // Total comes from the client's actual plan (sum of each week's task count),
+  // not from saved weekProgress rows — a fresh client with no rows yet should
+  // see e.g. "0/65 complete", not "0/0". Falls back to 5 posts × 13 weeks if
+  // the plan can't be derived.
+  let total = 0;
+  try {
+    (getClientWeeks() || []).forEach(w => { total += (w.tasks || []).length; });
+  } catch(e) { console.warn('getTaskProgress: getClientWeeks failed:', e); }
+  if (!total) total = 5 * 13;
+  let done = 0;
   Object.values(SESSION.weekProgress).forEach(w => {
-    (w.tasks||[]).forEach(t => { total++; if(t===2) done++; });
+    (w.tasks||[]).forEach(t => { if(t===2) done++; });
   });
+  done = Math.min(done, total);
   return { done, total, pct: total>0 ? Math.round((done/total)*100) : 0 };
 }
 
@@ -1515,10 +1524,9 @@ function renderExecute(weekNum) {
   else if(isCurrent) badge='<span class="week-card-badge badge-current">Current Week</span>';
   else badge='<span class="week-card-badge badge-upcoming">Upcoming</span>';
 
-  // DISRUPT_NOTES is hardcoded sample copy from the demo client. ONLY fall
-  // back to it for demo/booth — real clients see only what their strategist
-  // (or future feature) actually saved into team_notes.
-  const note = SESSION.teamNotes[weekNum] || (isDemoClient() ? (DISRUPT_NOTES[weekNum-1] || '') : '');
+  // Notes come only from team_notes — strategist-saved for real clients, or
+  // injected by the demo loadDashboardData override. No hardcoded fallback copy.
+  const note = SESSION.teamNotes[weekNum] || '';
   const wins = wd.wins||'';
 
   document.getElementById('tab-execute').innerHTML = `
@@ -1690,21 +1698,33 @@ async function cycleTask(weekNum, taskIdx) {
   // Sync linked video script: marking the task done auto-records the script
   // so it falls off the "Video Scripts to Record" library. Cycling back from
   // done un-records, so accidental clicks are recoverable.
-  try {
-    const wks = getClientWeeks();
-    const t = wks[weekNum-1] && wks[weekNum-1].tasks ? wks[weekNum-1].tasks[taskIdx] : '';
-    const taskText = (t && typeof t === 'object') ? (t.title || '') : String(t || '');
-    const linked = getScriptForTask(weekNum, taskText);
-    if (linked) {
-      const k = scriptRecordedKey(linked.num);
-      if (next === 2) localStorage.setItem(k, '1');
-      else if (cur === 2) localStorage.removeItem(k);
-    }
-  } catch(e) { console.warn('script-sync failed:', e); }
+  const syncLinkedScript = (fromState, toState) => {
+    try {
+      const wks = getClientWeeks();
+      const t = wks[weekNum-1] && wks[weekNum-1].tasks ? wks[weekNum-1].tasks[taskIdx] : '';
+      const taskText = (t && typeof t === 'object') ? (t.title || '') : String(t || '');
+      const linked = getScriptForTask(weekNum, taskText);
+      if (linked) {
+        const k = scriptRecordedKey(linked.num);
+        if (toState === 2) localStorage.setItem(k, '1');
+        else if (fromState === 2) localStorage.removeItem(k);
+      }
+    } catch(e) { console.warn('script-sync failed:', e); }
+  };
+  syncLinkedScript(cur, next);
 
   renderExecute(weekNum);
-  await saveWeekProgress(weekNum);
-  toast('Saved','success');
+  try {
+    await saveWeekProgress(weekNum);
+    toast('Saved','success');
+  } catch(e) {
+    // Save failed — revert the optimistic UI so the screen matches the server.
+    SESSION.weekProgress[weekNum].tasks[taskIdx] = cur;
+    syncLinkedScript(next, cur);
+    renderExecute(weekNum);
+    console.warn('saveWeekProgress failed:', e);
+    toast("Couldn't save — check your connection and try again", 'error');
+  }
 }
 
 // ── UPDATE WINS ───────────────────────────────────────────────────────────────
@@ -1713,8 +1733,13 @@ async function updateWins(weekNum, val) {
   SESSION.weekProgress[weekNum].wins = val;
   clearTimeout(winsSaveTimers[weekNum]);
   winsSaveTimers[weekNum] = setTimeout(async()=>{
-    await saveWeekProgress(weekNum);
-    toast('Saved','success');
+    try {
+      await saveWeekProgress(weekNum);
+      toast('Saved','success');
+    } catch(e) {
+      console.warn('saveWeekProgress (wins) failed:', e);
+      toast("Couldn't save — check your connection and try again", 'error');
+    }
   },800);
 }
 
@@ -1723,15 +1748,20 @@ async function updateMetric(key, val) {
   SESSION.metrics[key] = parseInt(val)||0;
   clearTimeout(metricsSaveTimer);
   metricsSaveTimer = setTimeout(async()=>{
-    await saveMetrics();
-    toast('Metrics saved','success');
-    // Refresh scorecard only
-    const m = SESSION.metrics;
-    const cards = ['cases','reviews','preneed'];
-    cards.forEach(k=>{
-      const el = document.getElementById('m-'+k);
-      if(el) el.value = m[k]||0;
-    });
+    try {
+      await saveMetrics();
+      toast('Metrics saved','success');
+      // Refresh scorecard only
+      const m = SESSION.metrics;
+      const cards = ['cases','reviews','preneed'];
+      cards.forEach(k=>{
+        const el = document.getElementById('m-'+k);
+        if(el) el.value = m[k]||0;
+      });
+    } catch(e) {
+      console.warn('saveMetrics failed:', e);
+      toast("Couldn't save — check your connection and try again", 'error');
+    }
   },800);
 }
 
@@ -1744,9 +1774,9 @@ async function updateMetric(key, val) {
 //   3. If parsing returns too little (AI drifted from expected headers),
 //      fall back to rendering the raw text in a styled readable container
 //      so the client still sees their strategy, just not in fancy cards.
-//   4. If no generated output at all (demo mode, admin-viewing-self, or a
-//      brand-new client without generation yet), show the hardcoded demo
-//      content — that's what makes the conference demo look great.
+//   4. If no generated output at all (not yet generated, or demo-data.js
+//      failed to load for the demo client), show the neutral
+//      strategyPendingPlaceholder — never sample content from another business.
 
 function getGenOutput(moduleKey) {
   const cd = SESSION.viewingClientData || SESSION.clientData;
@@ -1756,8 +1786,7 @@ function getGenOutput(moduleKey) {
   return (typeof v === 'string' && v.trim().length > 40) ? v : null;
 }
 
-// Returns the active client's 13-week content plan. For demo/booth: the
-// hardcoded `WEEKS` constant. For real clients: parses two sources —
+// Returns the active client's 13-week content plan by parsing two sources —
 //   (1) the roadmap module for high-level theme/focus per week
 //   (2) the week_posts shape ({ "1": "<5 detailed posts>", ..., "13": "..." })
 //       for the actual post-by-post content
@@ -1765,12 +1794,10 @@ function getGenOutput(moduleKey) {
 // hashtags, cross-post indicator, post type) so Execute tab can show full
 // detail on click.
 function getClientWeeks() {
-  // Demo client used to short-circuit to the legacy WEEKS const, but the
-  // shared demo-data.js now injects _strategy_generated_output into demo
-  // SESSION so the regular parser path renders the new 13-week × 5-post
-  // structure. Fall back to WEEKS only if the shared demo data failed to
-  // load (defensive, shouldn't happen in production).
-  if (isDemoClient() && !window.DEMO_GENERATED_OUTPUT) return WEEKS;
+  // Demo client: demo-data.js injects _strategy_generated_output into the demo
+  // SESSION, so the regular parser path below renders the demo content. If the
+  // demo data failed to load, the loop below produces the same neutral
+  // per-week placeholders a real client without generated output sees.
   if (SESSION._cachedClientWeeks) return SESSION._cachedClientWeeks;
 
   // Pull weekly themes from the roadmap module (now overview-only)
@@ -2046,19 +2073,6 @@ function openScriptForTask(scriptNum) {
   }, 50);
 }
 
-function buildPlaceholderWeeks() {
-  const arr = [];
-  for (let i = 1; i <= 13; i++) {
-    arr.push({
-      num: i,
-      theme: 'Week ' + i,
-      focus: 'Your roadmap will appear here once your strategy is released.',
-      tasks: ['', '', '', ''],
-    });
-  }
-  return arr;
-}
-
 // Build 90-day score targets. Trust the intake first — the buyer typed
 // their actual numbers in there. The AI's "GROWTH TARGETS" section is
 // inspirational copy, not a contract; parsing it has burned us by grabbing
@@ -2115,8 +2129,8 @@ function getClientTargets() {
 }
 
 // True only for the demo client (?demo=true / ?booth=true). Real clients who
-// somehow end up without generated output should NOT see hardcoded
-// "Huff-Guthrie / Franklin" sample content — they get a neutral placeholder.
+// somehow end up without generated output get a neutral placeholder — never
+// sample content from another business.
 function isDemoClient() {
   return (SESSION.clientId === 'demo-client-001') || (SESSION.viewingClientData && SESSION.viewingClientData.id === 'demo-client-001');
 }
@@ -2367,25 +2381,9 @@ function renderStrategyCompetitors() {
     ${body}
   </div>`;
 
-  if (!raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('Competitor Intel', 'Know Your Battlefield');
-    const comps = [
-      {name:'Gardinier-Warren Funeral Home',pos:'Legacy player — established brand, strong word of mouth',threat:'Families who prioritize tradition may default here without research.',attack:'They don\'t show up where the next generation of buyers lives: online, authentically, on video. Your content strategy out-positions them before the call is ever made.'},
-      {name:'Timothy Hartle Funeral Home',pos:'Low-visibility competitor — minimal digital presence',threat:'May win on price if families don\'t know the difference.',attack:'Invisible online. No reviews worth noting, no video content, no community presence. Every post you publish makes them look more absent.'},
-      {name:'Hile-Best Funeral Home',pos:'Perceived budget option — draws price-sensitive families',threat:'Families who lead with "how much does it cost" before understanding value.',attack:'Position price as a risk signal, not a feature. Your content educates families on what they\'re actually buying — before they ever compare quotes.'}
-    ];
-    return wrap(`
-      <div class="strat-highlight">
-        <span class="strat-highlight-label">Your Competitive Position</span>
-        <div class="strat-highlight-text"><strong>Huff-Guthrie is the only full-service, owner-operated, community-rooted funeral home in Franklin with a full chapel, on-camera staff, and active grief programming.</strong> No competitor matches that combination. Stop defending — start declaring.</div>
-      </div>
-      ${comps.map(c=>`<div class="comp-card"><div class="comp-hd"><div class="comp-name">${escHtml(c.name)}</div><div class="comp-pos">${escHtml(c.pos)}</div></div>
-        <div class="comp-body">
-          <div><span class="comp-sl">Their Threat</span><div class="comp-text">${escHtml(c.threat)}</div></div>
-          <div class="comp-attack"><span class="comp-sl">Your Counter Move</span><div class="comp-text">${escHtml(c.attack)}</div></div>
-        </div></div>`).join('')}
-    `);
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw) return strategyPendingPlaceholder('Competitor Intel', 'Know Your Battlefield');
 
   // Split top-level: COMPETITIVE LANDSCAPE / POSITIONING MAP / THE OPENING are one-off
   // and COMPETITOR: N blocks repeat.
@@ -2456,33 +2454,9 @@ function renderStrategyBrand() {
     ${body}
   </div>`;
 
-  if (!raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('Brand Guidelines', 'The Four Pillars');
-    const pillars = [
-      {title:'Show Up Completely',tagline:'"The Funeral Home That Shows Up"',body:'Suited professionals at every call. No casual dress, no exceptions. Community events that have nothing to do with funerals. A phone that gets answered. This is the operating standard that becomes the brand.'},
-      {title:'Own the Building',tagline:'115-year Victorian landmark as a competitive moat',body:'No competitor in your market has a building that tells a story like yours. Full chapel, real architecture, visible investment. Every camera angle is a differentiator.'},
-      {title:'Put Faces to the Name',tagline:'Adam and Maddison on camera, consistently',body:'Families choose people before they choose funeral homes. Adam\'s presence on video builds pre-trust before the call. Maddison brings a different energy — use both.'},
-      {title:'Lead With Aftercare',tagline:'Grief support as a proof point, not a pamphlet',body:'10+ annual events. Widow/widower lunches. Butterfly releases. Paint classes. Nobody else does this in your market. It\'s not a program — it\'s proof of your values.'},
-    ];
-    return wrap(`
-      <div class="strat-highlight">
-        <span class="strat-highlight-label">Brand Promise</span>
-        <div class="strat-highlight-text">"You'll never wonder if you made the right choice." That's the feeling every piece of content, every post, every video should create.</div>
-      </div>
-      <div class="strat-highlight">
-        <span class="strat-highlight-label">Recommended Tagline</span>
-        <div class="strat-highlight-text"><strong>The Funeral Home That Shows Up.</strong> Simple. Earned. Defensible. Every competitor can claim compassion — only Huff-Guthrie can prove they show up at 2 AM in a suit.</div>
-      </div>
-      ${pillars.map((p,i)=>`<div class="pillar-card"><div class="pillar-num">0${i+1}</div><div class="pillar-title">${escHtml(p.title)}</div><div class="pillar-tagline">${escHtml(p.tagline)}</div><div class="pillar-body">${escHtml(p.body)}</div></div>`).join('')}
-      <div style="margin-top:16px;">
-        <div class="strat-card-label" style="font-family:var(--font-mono);font-size:8px;color:var(--green-dk);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Voice & Tone</div>
-        <div class="dd-grid">
-          <div class="do-box"><span class="dd-label">Always Say</span><ul class="dd-list"><li>Direct, confident, specific</li><li>Stories over statistics</li><li>We show up — in every context</li><li>Named staff, real moments</li><li>Earned pride, not bragging</li></ul></div>
-          <div class="dont-box"><span class="dd-label">Never Say</span><ul class="dd-list"><li>At this difficult time...</li><li>We treat every family like our own</li><li>Caring, compassionate service</li><li>Affordable options available</li><li>Industry-leading anything</li></ul></div>
-        </div>
-      </div>
-    `);
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw) return strategyPendingPlaceholder('Brand Guidelines', 'The Four Pillars');
 
   const sec = parseSections(raw, [
     'POSITIONING STATEMENT',
@@ -2599,22 +2573,9 @@ function renderStrategyPersonas() {
     ${body}
   </div>`;
 
-  if (!raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('Customer Personas', 'Who Makes The Call');
-    const personas = [
-      {badge:'Primary Decision-Maker',name:'The Daughter Who Takes Charge',profile:'48–62, female, local or nearby, employed, adult children',trigger:'Called because nobody else will make the decision. Comes in overwhelmed.',fear:'Making the wrong choice and being judged by the rest of the family.',need:'Confidence that she picked right. Evidence before the call, not during it.',win:'"I chose them because of the videos I saw on Facebook. By the time I walked in, I already trusted them."'},
-      {badge:'Pre-Planner',name:'The Organized Widower',profile:'65–78, male, recently lost spouse, local, financially stable',trigger:'Watched his wife handle everything and doesn\'t want to burden his kids.',fear:'Being a burden. Leaving a mess. Having no say in his own final arrangements.',need:'A straightforward process. No pressure. Someone who respects his time.',win:'"They didn\'t try to sell me anything. They just helped me get it done."'},
-    ];
-    return wrap(personas.map(p=>`<div class="persona-card">
-      <div class="persona-hd"><span class="persona-badge">${escHtml(p.badge)}</span><div class="persona-name">${escHtml(p.name)}</div><div class="persona-profile">${escHtml(p.profile)}</div></div>
-      <div class="persona-body">
-        <div><span class="persona-field-label">What Triggers the Decision</span><div class="persona-text">${escHtml(p.trigger)}</div></div>
-        <div><span class="persona-field-label">Primary Fear</span><div class="persona-text">${escHtml(p.fear)}</div></div>
-        <div><span class="persona-field-label">What They Need to Believe</span><div class="persona-text">${escHtml(p.need)}</div></div>
-        <div class="persona-win">${escHtml(p.win)}</div>
-      </div>
-    </div>`).join(''));
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw) return strategyPendingPlaceholder('Customer Personas', 'Who Makes The Call');
 
   // AI emits: PERSONA 1: THE AT-NEED CALLER, PERSONA 2: THE PRE-PLANNER, PERSONA 3: THE ADULT CHILD RESEARCHER
   const personaBlocks = splitRepeating(raw, /^persona\s*\d+\s*:/i);
@@ -2680,39 +2641,9 @@ function renderStrategyScripts() {
     ${body}
   </div>`;
 
-  if (!raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('Video Scripts', 'Ready to Film');
-    const scripts = [
-      {title:'Script 1: The Suit at 2 AM',tags:['Facebook Video','60–90 sec','Adam on Camera'],beats:[
-        {name:'Hook',time:'0–5s',text:'You called us at 2 in the morning. I answered in a suit. That\'s not an accident — that\'s our standard.'},
-        {name:'Problem',time:'5–20s',text:'Most people don\'t know what to expect when they call a funeral home for the first time. They\'re scared. They\'ve never done this before. What they see in the first five minutes tells them everything.'},
-        {name:'Credibility',time:'20–40s',text:'I\'ve been doing this for 22 years. My father did it before me. And the one thing I know is that how you show up matters. It tells a family: we take this seriously. You made the right call.'},
-        {name:'CTA',time:'40–60s',text:'If you\'ve ever wondered what it feels like to have someone truly show up for your family — we\'d be honored to talk. Huff-Guthrie. Franklin, Pennsylvania.'}
-      ],note:'Film this in the entrance or prep room — somewhere that communicates professionalism. Adam should be in his full suit. No teleprompter. Let him tell it naturally, then trim.'},
-      {title:'Script 2: What Boujee Actually Means',tags:['Facebook Video','90 sec','Adam Direct-to-Camera'],beats:[
-        {name:'Hook',time:'0–5s',text:'People call us the most expensive funeral home in Franklin. They\'re not wrong. Here\'s why that doesn\'t bother me.'},
-        {name:'Problem',time:'5–25s',text:'When a family is making this decision — usually in one of the hardest moments of their lives — the last thing they need is to wonder what they\'re getting. Cheap is a gamble. And they\'re not playing with money — they\'re playing with how their person is remembered.'},
-        {name:'Proof',time:'25–55s',text:'We have a full-time grief counselor on staff. A 115-year-old building we\'ve never stopped investing in. A full chapel that seats over 200 people. Technology most homes don\'t offer. And staff who answer the phone at 2 AM in a suit. That\'s what the price pays for.'},
-        {name:'CTA',time:'55–90s',text:'We\'re not for everyone. But for families who want to know they got it right — we\'re the call you make once and never regret. Huff-Guthrie. The Funeral Home That Shows Up.'}
-      ],note:'Adam needs to own this one without apology. No hedging, no softening. The confidence IS the message. If he wavers, the whole thing falls apart. Do multiple takes and pick the one where he sounds most certain.'}
-    ];
-    return wrap(scripts.map((s,i)=>`<div class="script-card">
-      <div class="script-hd" onclick="toggleScript(this)">
-        <div class="script-num">${i+1}</div>
-        <div class="script-meta">
-          <div class="script-title">${escHtml(s.title)}</div>
-          <div class="script-tags">${s.tags.map(t=>`<span class="script-tag">${escHtml(t)}</span>`).join('')}</div>
-        </div>
-        <div class="script-toggle">▼</div>
-      </div>
-      <div class="script-body">
-        <div class="script-inner">
-          ${s.beats.map(b=>`<div class="beat"><div class="beat-hd"><span class="beat-name">${escHtml(b.name)}</span><span class="beat-time">${escHtml(b.time)}</span></div><div class="beat-text">${escHtml(b.text)}</div></div>`).join('')}
-          <div class="director-note"><span class="dn-label">Director Note</span><div class="dn-text">${escHtml(s.note)}</div></div>
-        </div>
-      </div>
-    </div>`).join(''));
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw) return strategyPendingPlaceholder('Video Scripts', 'Ready to Film');
 
   const scriptBlocks = splitRepeating(raw, /^script\s*\d+\s*:/i);
   if (scriptBlocks.length === 0) return wrap(renderRawFallback(raw));
@@ -2780,25 +2711,9 @@ function renderStrategyPreneed() {
     ${body}
   </div>`;
 
-  if (!raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('Pre-Need Engine', 'Build the Pipeline');
-    return wrap(`
-      <div class="strat-highlight">
-        <span class="strat-highlight-label">The Core Insight</span>
-        <div class="strat-highlight-text">Pre-need families don't walk in because they saw an ad. They walk in because they trust you already — and that trust was built in a Facebook video, a grief event, a community post. Your content IS your pre-need lead funnel.</div>
-      </div>
-      <div class="strat-card"><span class="strat-card-label">The Pre-Need Sequence</span><div class="strat-card-body">
-        <strong>Step 1:</strong> Content builds awareness and trust over 6–12 weeks.<br><br>
-        <strong>Step 2:</strong> A specific pre-planning post (Week 7 in the roadmap) surfaces the offer without pressure.<br><br>
-        <strong>Step 3:</strong> CTA is soft: "Curious about pre-planning? We're happy to have a no-obligation conversation."<br><br>
-        <strong>Step 4:</strong> Walk-in or phone inquiry → Maddison handles the initial meeting.<br><br>
-        <strong>Goal:</strong> 2 qualified pre-need inquiries per month. 6 total in 90 days.
-      </div></div>
-      <div class="strat-card"><span class="strat-card-label">Content Triggers That Drive Pre-Need</span><div class="strat-card-body">
-        The Week 7 post on pre-planning is your dedicated push — but pre-need leads also come from: the midnight call video (shows availability), the grief events posts (builds relationship), and the competitor post (surfaces the risk of waiting). Any content that builds trust accelerates the pre-need decision.
-      </div></div>
-    `);
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw) return strategyPendingPlaceholder('Pre-Need Engine', 'Build the Pipeline');
 
   const sec = parseSections(raw, [
     'PRE-NEED STRATEGY',
@@ -2880,23 +2795,9 @@ function renderStrategyRoadmap() {
     ${body}
   </div>`;
 
-  if (!raw && !week1Raw) {
-    if (!isDemoClient()) return strategyPendingPlaceholder('90-Day Roadmap', '13 Weeks. One Direction.');
-    return wrap(`
-      <div style="overflow-x:auto;">
-        <table class="week-strat-table">
-          <thead><tr><td>Week</td><td>Theme</td><td>Content Mix</td></tr></thead>
-          <tbody>
-            ${WEEKS.map(w => `<tr>
-              <td class="wst-num">${w.num}</td>
-              <td><div class="wst-theme">${escHtml(w.theme)}</div><div class="wst-focus">${escHtml(w.focus)}</div></td>
-              <td>${w.tasks.map(t => `<span class="wst-tag">${escHtml(t.split(':')[0])}</span>`).join(' ')}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    `);
-  }
+  // No generated output (and for the demo client, demo-data.js supplies it
+  // via _strategy_generated_output) — show the neutral pending placeholder.
+  if (!raw && !week1Raw) return strategyPendingPlaceholder('90-Day Roadmap', '13 Weeks. One Direction.');
 
   // Roadmap top-level headers
   const sec = parseSections(raw || '', [
@@ -3433,9 +3334,8 @@ document.getElementById('settings-modal').addEventListener('click', e=>{ if(e.ta
     theme: 'light',
     last_login: new Date().toISOString(),
     // Inject the shared demo content (loaded by demo-data.js) so the
-    // dashboard renders the new 13-week × 5-post structure instead of
-    // falling back to the legacy hardcoded "Heritage Adam/Maddison"
-    // blocks. q5_5/q2_8 etc. drive the scorecard targets too.
+    // dashboard renders the 13-week × 5-post structure. q5_5/q2_8 etc.
+    // drive the scorecard targets too.
     intake_answers: {
       _intake_complete: true,
       _strategy_released: true,
