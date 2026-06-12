@@ -4,6 +4,42 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# ── Clean URLs ──────────────────────────────────────────────────────────────
+# Canonicalize the legacy .html paths to extensionless ones. force=true so the
+# redirect wins even though the .html file exists. Query strings (e.g. the
+# ?setup= token on buyer setup links) are preserved automatically by Netlify,
+# so old emails and Stripe redirects pointing at *.html still land correctly.
+[[redirects]]
+  from = "/launch.html"
+  to = "/launch"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/dashboard.html"
+  to = "/dashboard"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 301
+  force = true
+
+# Serve the actual files at the clean paths (200 = internal rewrite, no
+# redirect, so the address bar stays clean). A 200 rewrite proxies the asset
+# and does NOT re-run the redirect engine, so there is no loop with the 301s.
+[[redirects]]
+  from = "/launch"
+  to = "/launch.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/dashboard.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

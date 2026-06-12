@@ -948,9 +948,9 @@ function persistAuthSession(data) {
   } catch(e) {}
 }
 function routeAfterAuth(data) {
-  if (data.state === 'dashboard' || data.role === 'admin') location.href = 'dashboard.html';
-  else                                                     location.href = 'launch.html';
-  // Note: 'strategy-under-review' falls through to launch.html, which renders
+  if (data.state === 'dashboard' || data.role === 'admin') location.href = '/dashboard';
+  else                                                     location.href = '/launch';
+  // Note: 'strategy-under-review' falls through to /launch, which renders
   // the screen-strategy-review waiting screen via its resumeIfLoggedIn IIFE.
 }
 
@@ -1062,7 +1062,7 @@ document.addEventListener('keydown', (e) => {
   document.getElementById('demo-banner').classList.add('show');
   // Replace all Stripe links with demo intake link
   document.querySelectorAll('a[href*="buy.stripe.com"], a[href*="stripe.com"]').forEach(a => {
-    a.href = '/launch.html?demo=true';
+    a.href = '/launch?demo=true';
     if(a.textContent.includes('$4,997')) a.textContent = 'Self-Guided — Demo →';
     if(a.textContent.includes('$6,997')) a.textContent = 'Guided — Demo →';
     if(a.textContent.includes('Get Started for $4,997')) a.textContent = 'See It Live — Self-Guided →';

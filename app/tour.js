@@ -15,10 +15,11 @@
   sessionStorage.setItem(TOUR_KEY, '1');
 
   var path = location.pathname.toLowerCase();
+  // Match both the clean paths (/launch, /dashboard) and the legacy .html ones.
   var page =
-    path.indexOf('launch.html') !== -1   ? 'launch'   :
-    path.indexOf('dashboard.html') !== -1 ? 'dashboard' :
-                                            'index';
+    path.indexOf('dashboard') !== -1 ? 'dashboard' :
+    path.indexOf('launch')    !== -1 ? 'launch'    :
+                                       'index';
 
   // Force ?demo=true on launch + dashboard so the tour walks real data.
   if ((page === 'launch' || page === 'dashboard') && params.get('demo') !== 'true') {
@@ -60,7 +61,7 @@
       { final: true, eyebrow: 'TOUR · 5 of 5', title: 'See What You Actually <span>Get</span>',
         body: 'Next: walk through the intake form, the AI strategy output, and the execution dashboard with real demo data populated.',
         buttons: [
-          { label: 'Continue → Intake form', href: 'launch.html?demo=true&tour=true', primary: true }
+          { label: 'Continue → Intake form', href: '/launch?demo=true&tour=true', primary: true }
         ] }
     ],
 
@@ -98,7 +99,7 @@
       { final: true, eyebrow: 'TOUR · 4 of 4', title: 'Now The <span>Execution</span>',
         body: 'A strategy is only as good as its execution. The dashboard tracks your 90-day rollout — weekly tasks, wins logged, metrics watched.',
         buttons: [
-          { label: 'Continue → Dashboard', href: 'dashboard.html?demo=true&tour=true', primary: true }
+          { label: 'Continue → Dashboard', href: '/dashboard?demo=true&tour=true', primary: true }
         ] }
     ],
 

@@ -591,7 +591,7 @@ textarea { resize: vertical; min-height: 96px; }
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--green);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">You're Live</div>
         <div style="font-family:var(--font-display);font-size:32px;color:var(--white);line-height:1.1;margin-bottom:10px;">Your strategy is <span style="color:var(--green);">released</span>.</div>
         <div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:520px;margin-bottom:22px;">Your full DISRUPT Launch dashboard is ready — strategy, execution roadmap, and weekly tasks are all queued up. You're already logged in with the password you set at the start.</div>
-        <a href="/dashboard.html" style="display:inline-block;padding:13px 28px;background:var(--pink);color:#fff;border:none;border-radius:6px;font-family:var(--font-display);font-size:20px;letter-spacing:1px;cursor:pointer;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--pink-dk)'" onmouseout="this.style.background='var(--pink)'">Open My Dashboard →</a>
+        <a href="/dashboard" style="display:inline-block;padding:13px 28px;background:var(--pink);color:#fff;border:none;border-radius:6px;font-family:var(--font-display);font-size:20px;letter-spacing:1px;cursor:pointer;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--pink-dk)'" onmouseout="this.style.background='var(--pink)'">Open My Dashboard →</a>
       </div>
     </div>
   </div>
@@ -933,7 +933,7 @@ async function submitResendSetup(){
       return;
     }
     var data = await res.json();
-    if (data.state === 'dashboard') { location.replace('/dashboard.html'); return; }
+    if (data.state === 'dashboard') { location.replace('/dashboard'); return; }
     // Guided user whose intake + generation is done but strategist hasn't
     // released the refined strategy yet — show the review-in-progress screen.
     if (data.state === 'strategy-under-review') {
@@ -1033,7 +1033,7 @@ async function submitAccount() {
       return;
     }
     // Strip the setup token from the URL so a refresh doesn't re-fire resolve
-    if (setupCtx) { history.replaceState({}, '', '/launch.html'); window.__SETUP_CONTEXT = null; }
+    if (setupCtx) { history.replaceState({}, '', '/launch'); window.__SETUP_CONTEXT = null; }
 
     // Persist session locally so page refreshes + intake saves stay authenticated
     saveSession({ token: data.token, clientId: data.clientId, email: data.email, contactName: data.contactName, businessName: data.businessName, tier: data.tier });
@@ -2372,7 +2372,7 @@ function escAttr(s) {
 
   // ── 4. SKIP TO OUTPUT — pre-built, instant ────────────────────────────────────
   window.demoDashboard = function() {
-    window.open('https://launch.disruptmedia.co/dashboard.html?demo=true', '_blank');
+    window.open('https://launch.disruptmedia.co/dashboard?demo=true', '_blank');
   };
 
   window.demoSkipToOutput = function() {
@@ -2418,9 +2418,9 @@ function escAttr(s) {
     renderWeek1();
     // In demo mode — point the dashboard CTA at the demo dashboard
     setTimeout(function() {
-      var ctaBtn = document.querySelector('#dashboard-setup-section a[href="/dashboard.html"]');
+      var ctaBtn = document.querySelector('#dashboard-setup-section a[href="/dashboard"]');
       if(ctaBtn) {
-        ctaBtn.setAttribute('href', 'https://launch.disruptmedia.co/dashboard.html?demo=true');
+        ctaBtn.setAttribute('href', 'https://launch.disruptmedia.co/dashboard?demo=true');
         ctaBtn.setAttribute('target', '_blank');
       }
     }, 200);
