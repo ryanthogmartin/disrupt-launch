@@ -412,6 +412,13 @@ input:focus,textarea:focus,select:focus{border-color:var(--green);}
 .strat-gate-title{font-family:var(--font-display);font-size:28px;color:var(--text);line-height:1.15;margin-bottom:14px;}
 .strat-gate-title span{color:var(--pink);}
 .strat-gate-copy{font-size:14px;color:var(--muted);line-height:1.7;margin:0;}
+.week-strat-table{width:100%;border-collapse:collapse;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--card-shadow);}
+.week-strat-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top;font-size:13px;color:var(--text2);}
+.week-strat-table tr:last-child td{border-bottom:none;}
+.wst-num{width:44px;font-family:var(--font-display);font-size:20px;color:var(--faint);text-align:center;background:var(--surface);border-right:1px solid var(--border);}
+.wst-theme{font-weight:700;color:var(--text);margin-bottom:3px;}
+.wst-focus{font-size:12px;color:var(--muted);line-height:1.5;}
+.wst-tag{display:inline-block;font-family:var(--font-mono);font-size:8px;color:var(--green-dk);background:var(--green-sub);border:1px solid var(--green-dim);padding:2px 7px;border-radius:100px;letter-spacing:.5px;margin:2px 2px 2px 0;}
 .strat-stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
 .strat-stat{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--yellow);border-radius:var(--radius);padding:14px 18px;flex:1;min-width:130px;}
 .strat-stat-num{font-family:var(--font-display);font-size:32px;color:var(--yellow-dk);line-height:1;display:block;}
@@ -825,6 +832,11 @@ async function handleLogout() {
 
 // ── DATA LOADING ─────────────────────────────────────────────────────────────
 async function loadDashboardData() {
+  // Per-client caches must not survive an admin switching between clients
+  delete SESSION._cachedClientWeeks;
+  delete SESSION._cachedAllScripts;
+  delete SESSION._scriptMatchCache;
+  delete SESSION._cachedClientTargets;
   const cid = SESSION.viewingClientId || SESSION.clientId;
   const passTarget = SESSION.role === 'admin' && SESSION.viewingClientId && SESSION.viewingClientId !== SESSION.clientId;
   const body = { token: sessionToken() };
@@ -863,6 +875,7 @@ async function saveMetrics() {
 async function viewClient(clientId) {
   showLoading('Loading client...');
   const client = SESSION.allClients.find(c => c.id === clientId);
+  if (!client) { hideLoading(); toast('Client not found — refresh and try again', 'error'); return; }
   SESSION.viewingClientId = clientId;
   SESSION.viewingClientData = client;
   await loadDashboardData();
@@ -1071,7 +1084,7 @@ function renderHome() {
     if(wd.wins && wd.wins.trim()) allWins.push({ week: parseInt(wn), text: wd.wins.trim() });
   });
   allWins.sort((a,b)=>b.week-a.week);
-  const winsHtml = allWins.length ? allWins.map(w=>`<div class="win-item"><span class="win-week">Week ${w.week}</span><span class="win-text">${w.text}</span></div>`).join('') : '<div class="no-wins">Log your first win in the Execute tab.</div>';
+  const winsHtml = allWins.length ? allWins.map(w=>`<div class="win-item"><span class="win-week">Week ${w.week}</span><span class="win-text">${escHtml(w.text)}</span></div>`).join('') : '<div class="no-wins">Log your first win in the Execute tab.</div>';
 
   // Week action cards. Task counts are now per-week (variable) instead of
   // always /4 — pulled from the parsed roadmap weeks.
@@ -1086,7 +1099,7 @@ function renderHome() {
       <div class="action-card-week">Week ${prevWeek}: ${escHtml(clientWeeks[prevWeek-1].theme)}</div>
       <div class="action-card-theme">${prevPending} task${prevPending>1?'s':''} still pending from last week.</div>
       <div class="action-card-tasks">${prevDone}/${prevTotal} complete</div>
-      <button class="action-btn amber" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${prevWeek})">Finish Week ${prevWeek} →</button>
+      <button class="action-btn amber" onclick="showTab('execute',document.getElementById('tab-btn-execute'));renderExecute(${prevWeek})">Finish Week ${prevWeek} →</button>
     </div>` : '';
 
   const curWd = SESSION.weekProgress[curWeek] || {tasks:[0,0,0,0]};
@@ -1136,7 +1149,7 @@ function renderHome() {
         <div class="action-card-week">Week ${curWeek}: ${escHtml(clientWeeks[curWeek-1].theme)}</div>
         <div class="action-card-theme">${escHtml(clientWeeks[curWeek-1].focus)}</div>
         <div class="action-card-tasks">${curDone}/${curTotal} tasks complete</div>
-        <button class="action-btn green" onclick="showTab('execute',document.querySelectorAll('.tab-btn')[1]);renderExecute(${curWeek})">Go to Week ${curWeek} →</button>
+        <button class="action-btn green" onclick="showTab('execute',document.getElementById('tab-btn-execute'));renderExecute(${curWeek})">Go to Week ${curWeek} →</button>
       </div>
       ${catchupHtml || "<div class='action-card'><div class='action-card-label'>All Caught Up</div><div class='action-card-week'>No missed tasks</div><div class='action-card-theme'>You're current. Keep publishing.</div></div>"}
     </div>
@@ -1207,9 +1220,9 @@ function renderAdminHome() {
     const reviews = c.metrics?.[0]?.reviews || 0;
     return `<div class="client-row">
       <div>
-        <div class="client-name">${c.contact_name || c.name}</div>
-        <div class="client-contact">${c.email}</div>
-        <div class="client-meta">${lastLogin(c)} · ${reviews} reviews</div>
+        <div class="client-name">${escHtml(c.contact_name || c.name)}</div>
+        <div class="client-contact">${escHtml(c.email)}</div>
+        <div class="client-meta">${escHtml(lastLogin(c))} · ${reviews} reviews</div>
       </div>
       <div class="client-progress-wrap">
         <div class="client-progress-label">Task Completion</div>
@@ -1313,7 +1326,7 @@ async function renderAdminData() {
         ? 'You haven\'t released any strategies yet. Once a client completes intake and you release their strategy, they\'ll start showing up here.'
         : 'No active clients in the last 90 days. Clients become active when they log in, log monthly revenue, complete tasks, or update metrics.';
       panel.insertAdjacentHTML('beforeend',
-        `<div class="data-empty" style="margin-top:18px;padding:16px 18px;background:rgba(243,206,36,0.08);border:1px solid rgba(243,206,36,0.3);border-radius:8px;color:var(--ink-2);font-size:13px;line-height:1.55">${escHtml(msg)}</div>`
+        `<div class="data-empty" style="margin-top:18px;padding:16px 18px;background:rgba(243,206,36,0.08);border:1px solid rgba(243,206,36,0.3);border-radius:8px;color:var(--text2);font-size:13px;line-height:1.55">${escHtml(msg)}</div>`
       );
     }
   } catch (e) {
@@ -1439,7 +1452,7 @@ function renderExecute(weekNum) {
           const captionId = detailId + '-cap';
           return `<div class="post-detail" id="${detailId}" style="display:none;margin:12px 0 4px;padding:14px 16px;background:var(--green-sub2,rgba(125,196,34,0.08));border-radius:6px;border-left:3px solid var(--green)">
             ${post.visual ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Visual Direction</span><div style="font-size:13px;color:var(--text);line-height:1.55">${escHtml(post.visual)}</div></div>` : ''}
-            ${post.caption ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Caption — Copy &amp; Paste</span><div id="${captionId}" style="font-size:13px;color:var(--text);line-height:1.6;background:#fff;border:1px solid var(--border);border-radius:4px;padding:10px 12px;white-space:pre-wrap">${escHtml(post.caption)}</div><button onclick="event.stopPropagation();copyPostCaption('${captionId}',this)" style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer">Copy caption</button></div>` : ''}
+            ${post.caption ? `<div style="margin-bottom:10px"><span style="font-family:var(--font-mono);font-size:9px;color:var(--green-dk,#5A9016);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px">Caption — Copy &amp; Paste</span><div id="${captionId}" style="font-size:13px;color:#1A1A1A;line-height:1.6;background:#fff;border:1px solid var(--border);border-radius:4px;padding:10px 12px;white-space:pre-wrap">${escHtml(post.caption)}</div><button onclick="event.stopPropagation();copyPostCaption('${captionId}',this)" style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer">Copy caption</button></div>` : ''}
             <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;margin-top:6px">
               ${post.bestTime ? `<span>📅 ${escHtml(post.bestTime)}</span>` : ''}
               ${post.crosspost ? `<span>📲 IG cross-post: ${escHtml(post.crosspost)}</span>` : ''}
@@ -1518,8 +1531,8 @@ function renderExecute(weekNum) {
         <div>
           <div class="week-card-num">${String(weekNum).padStart(2,'0')}</div>
           <div class="week-card-label">${isCurrent?'Current Week':'Week '+weekNum}</div>
-          <div class="week-card-theme">${wk.theme}</div>
-          <div class="week-card-focus">${wk.focus}</div>
+          <div class="week-card-theme">${escHtml(wk.theme)}</div>
+          <div class="week-card-focus">${escHtml(wk.focus)}</div>
         </div>
         ${badge}
       </div>
@@ -1532,7 +1545,7 @@ function renderExecute(weekNum) {
         ${scriptsBlock}
         <span class="week-section-label">Wins This Week</span>
         <textarea class="week-wins-input" id="wins-${weekNum}" placeholder="What worked? What shipped? What feedback did you get from families this week?"
-          oninput="updateWins(${weekNum},this.value)">${wins}</textarea>
+          oninput="updateWins(${weekNum},this.value)">${escHtml(wins)}</textarea>
         ${note ? `<div class="disrupt-notes-box">
           <span class="disrupt-notes-label">DISRUPT Note — Week ${weekNum}</span>
           <div class="disrupt-notes-text">${escHtml(note)}</div>
@@ -2113,7 +2126,7 @@ function strategyPendingPlaceholder(sectionLabel, sectionTitle) {
     <div class="strat-eyebrow">${escHtml(sectionLabel)}</div>
     <div class="strat-title">${escHtml(sectionTitle)}</div>
     <div class="strat-highlight" style="background:rgba(243,206,36,0.08);border-color:rgba(243,206,36,0.3)">
-      <div class="strat-highlight-text" style="color:var(--ink-2)">This section isn't available yet. If your strategy was recently released and you're seeing this, please refresh the page. If the issue persists, email <a href="mailto:support@disruptmedia.co" style="color:var(--pink)">support@disruptmedia.co</a>.</div>
+      <div class="strat-highlight-text" style="color:var(--text2)">This section isn't available yet. If your strategy was recently released and you're seeing this, please refresh the page. If the issue persists, email <a href="mailto:support@disruptmedia.co" style="color:var(--pink)">support@disruptmedia.co</a>.</div>
     </div>
   </div>`;
 }

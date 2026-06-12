@@ -203,8 +203,9 @@ textarea { resize: vertical; min-height: 96px; }
 .gen-card.active .gen-card-icon { animation: gen-spin 1s linear infinite; color: var(--pink); }
 .gen-card.done { border-color: var(--green); background: var(--green-sub2); }
 .gen-card.done .gen-card-icon { color: var(--green); animation: none; }
-.gen-card.failed { border-color: #F3CE24; background: #fffbea; }
-.gen-card.failed .gen-card-icon { color: #8B6F00; animation: none; }
+.gen-card.failed { border-color: #F3CE24; background: rgba(243,206,36,0.08); }
+.gen-card.failed .gen-card-icon { color: #F3CE24; animation: none; }
+.gen-card.failed .gen-card-label { color: #F3CE24; }
 .gen-card-icon { font-family: var(--font-mono); font-size: 16px; font-weight: 700; min-width: 22px; text-align: center; color: var(--muted); display: inline-block; line-height: 1; }
 .gen-card-label { font-family: var(--font-display); font-size: 13px; color: var(--text); line-height: 1.3; }
 .gen-card.done .gen-card-label { color: var(--green); }
@@ -226,7 +227,7 @@ textarea { resize: vertical; min-height: 96px; }
 .out-tabs { display: none; }
 .out-tab { display: none; }
 .out-select-wrap { margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-.out-select { width: 100%; padding: 12px 16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--green); background: var(--bg2); border: 1px solid var(--green); border-radius: 4px; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237DC422' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
+.out-select { width: 100%; padding: 12px 16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--green); background: var(--surface2); border: 1px solid var(--green); border-radius: 4px; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237DC422' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
 .out-select:focus { outline: none; border-color: var(--green); }
 
 /* output content */
@@ -450,7 +451,7 @@ textarea { resize: vertical; min-height: 96px; }
     <p class="mode-sub" id="acct-sub">We'll use this to personalize your output and set up your dashboard when we're done. Takes 30 seconds.</p>
 
     <div class="q-block" style="margin-bottom:20px;">
-      <label class="q-label" for="acct-fname">Your Name <span class="key-badge">Required</span></label>
+      <label class="q-label" for="acct-name">Your Name <span class="key-badge">Required</span></label>
       <input type="text" id="acct-name" autocomplete="name">
       <div class="err-msg" id="acct-name-err" style="display:none;">Please enter your name.</div>
     </div>
@@ -629,27 +630,8 @@ textarea { resize: vertical; min-height: 96px; }
 const PROXY_URL   = 'https://disrupt-proxy.disruptmedia.workers.dev';
 const PROXY_TOKEN = 'disrupt-2026-key';
 
-// ── SUPABASE CONFIG ───────────────────────────────────────────────────────────
-const SB_URL = 'https://hreahmwfzmuhgkkhrbdq.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWFobXdmem11aGdra2hyYmRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjU4NTcsImV4cCI6MjA5MjEwMTg1N30.kj070MgNzTQYlQ0_0XDFYNkO9_MhNWzr16GlzqSc10Q';
-
-async function sbFetch(path, method, body) {
-  const res = await fetch(SB_URL + '/rest/v1/' + path, {
-    method,
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || res.statusText);
-  }
-  return res.json();
-}
+// All data access goes through the Worker — the page never talks to
+// Supabase directly. (A legacy direct-REST helper was removed here.)
 
 // ── QUESTION DATA ────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -745,7 +727,7 @@ function startMode(m) {
   restoreAnswers();
   document.getElementById('screen-mode').classList.remove('active');
   document.getElementById('screen-account').classList.add('active');
-  document.getElementById('topbar-right').textContent = 'Step 1 of 7';
+  document.getElementById('topbar-right').textContent = 'Step 1 of 6';
 }
 
 // Stripe redirects with ?tier=self|guided. Show the welcome handoff instead of
@@ -883,8 +865,9 @@ async function submitResendSetup(){
     var sdata = await sres.json().catch(function(){ return {}; });
     if (!sres.ok || !sdata.email) {
       alert(sdata.error || 'This setup link is invalid or expired. Please contact support@disruptmedia.co.');
-      history.replaceState({}, '', '/launch.html');
-      if (modeEl) modeEl.classList.add('active');
+      // Bounce to the marketing page — re-activating the mode screen here
+      // would reopen the unpaid signup path the access guard exists to close.
+      location.replace('/');
       return;
     }
     if (sdata.alreadyCompleted) {
@@ -910,8 +893,8 @@ async function submitResendSetup(){
     if (acctSub) acctSub.textContent = 'Paid email on file: ' + sdata.email + ' — finish setup below and start your intake.';
   } catch(e) {
     console.warn('resolve-setup failed:', e);
-    history.replaceState({}, '', '/launch.html');
-    if (modeEl) modeEl.classList.add('active');
+    alert('We could not verify your setup link (network error). Please try the link from your email again in a moment.');
+    location.replace('/');
   }
 })();
 
@@ -1396,7 +1379,15 @@ async function runBatch(modules, arg) {
   return failed;
 }
 
+// Warn before leaving the page while generation is in flight — a refresh
+// discards 2-3 minutes of in-memory module output and forces a full re-run.
+let _generationInFlight = false;
+window.addEventListener('beforeunload', function (e) {
+  if (_generationInFlight) { e.preventDefault(); e.returnValue = ''; }
+});
+
 async function startGeneration() {
+  _generationInFlight = true;
   document.getElementById('screen-q').classList.remove('active');
   document.getElementById('progress-wrap').style.display = 'none';
   document.getElementById('screen-gen').classList.add('active');
@@ -1458,8 +1449,16 @@ async function startGeneration() {
     return;
   }
 
-  // All 8 done. Persist to Supabase. The Worker auto-releases for Self-Guided
-  // and holds for Guided, returning { state } to drive routing.
+  // All 8 done — persist + route (shared with the retry path).
+  await finishGeneration();
+}
+
+// Persist the finished output to Supabase and route by tier. The Worker
+// auto-releases for Self-Guided and holds for Guided, returning { state }.
+// Called from both startGeneration and retryGeneration so a Guided buyer
+// never sees raw modules regardless of which path completed.
+async function finishGeneration() {
+  _generationInFlight = false;
   let state = 'dashboard';
   try {
     const result = await persistGeneratedOutput();
@@ -1467,7 +1466,7 @@ async function startGeneration() {
   } catch (e) {
     console.warn('persist generated output failed:', e);
     // Fall back to tier from session — Guided still goes to review screen so
-    // they don't see raw AI output, Self-Guided still sees their strategy.
+    // they don't see raw unreviewed output, Self-Guided still sees their strategy.
     const s = loadSession();
     if (s && s.tier === 'guided') state = 'strategy-under-review';
   }
@@ -1604,35 +1603,57 @@ async function retryGeneration() {
   document.getElementById('screen-retry').classList.remove('active');
   document.getElementById('screen-gen').classList.add('active');
   const ctx = buildContext();
-  // If we know which modules failed, only retry THOSE — preserves the output
-  // that already succeeded. Otherwise do a full rerun from scratch.
-  const toRun = _failedModules.length ? _failedModules : ALL_MODULES;
-  toRun.forEach(m => setModuleState(m.key, 'pending'));
+  // Re-run the modules that failed PLUS any whose phase never started.
+  // (If Phase 1 failed, weekly posts and scripts were never attempted —
+  // jumping straight to output after fixing Phase 1 would ship a strategy
+  // with no content plan and no scripts.)
+  const failedKeys = new Set((_failedModules.length ? _failedModules : ALL_MODULES).map(m => m.key));
+  const needsRun = m =>
+    failedKeys.has(m.key) ||
+    (m.key === 'weekly'  && Object.keys(generatedOutput.week_posts || {}).length === 0) ||
+    (m.key === 'scripts' && !generatedOutput.scripts) ||
+    (PHASE_1_MODULES.includes(m) && !generatedOutput[m.key]);
+  const phase1Run = PHASE_1_MODULES.filter(needsRun);
+  const phase2Run = PHASE_2_MODULES.filter(needsRun);
+  const phase3Run = PHASE_3_MODULES.filter(needsRun);
+  phase1Run.concat(phase2Run, phase3Run).forEach(m => setModuleState(m.key, 'pending'));
   updateGenProgress();
-  // Scripts needs the full content plan as context; everything else just
-  // needs the raw intake. Concatenate week_posts in order for scripts.
-  const allWeekPostsText = Object.entries(generatedOutput.week_posts || {})
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([n, t]) => '=== WEEK ' + n + ' ===\n' + t)
-    .join('\n\n');
-  const scriptsCtx = {
-    intake:   ctx,
-    brand:    generatedOutput.brand    || '',
-    personas: generatedOutput.personas || '',
-    week1:    allWeekPostsText, // legacy-compat key
-    roadmap:  generatedOutput.roadmap  || '',
-  };
-  const results = await Promise.all(toRun.map(m => runModule(m, m.key === 'scripts' ? scriptsCtx : ctx)));
-  const stillFailed = toRun.filter((_, i) => !results[i].ok);
+
+  // Run in phase order — weekly posts need the roadmap, scripts need
+  // brand + personas + the full week_posts content plan.
+  let stillFailed = [];
+  if (phase1Run.length) {
+    const r = await Promise.all(phase1Run.map(m => runModule(m, ctx)));
+    stillFailed = phase1Run.filter((_, i) => !r[i].ok);
+  }
+  if (!stillFailed.length && phase2Run.length) {
+    const r = await Promise.all(phase2Run.map(m => runModule(m, ctx)));
+    stillFailed = phase2Run.filter((_, i) => !r[i].ok);
+  }
+  if (!stillFailed.length && phase3Run.length) {
+    const allWeekPostsText = Object.entries(generatedOutput.week_posts || {})
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([n, t]) => '=== WEEK ' + n + ' ===\n' + t)
+      .join('\n\n');
+    const scriptsCtx = {
+      intake:   ctx,
+      brand:    generatedOutput.brand    || '',
+      personas: generatedOutput.personas || '',
+      week1:    allWeekPostsText, // legacy-compat key
+      roadmap:  generatedOutput.roadmap  || '',
+    };
+    const r = await Promise.all(phase3Run.map(m => runModule(m, scriptsCtx)));
+    stillFailed = phase3Run.filter((_, i) => !r[i].ok);
+  }
   if (stillFailed.length) {
     const names = stillFailed.map(m => m.label).join(', ');
     showRetryScreen('Still had trouble with ' + stillFailed.length + ' module(s) (' + names + ').', stillFailed);
     return;
   }
   _failedModules = [];
-  persistGeneratedOutput().catch(e => console.warn('persist generated output failed:', e));
-  showOutput();
-  deliverToDisrupt();
+  // Same persist + tier-aware routing as the happy path — Guided buyers go
+  // to the review screen, not raw output.
+  await finishGeneration();
 }
 
 // Write the generated 8-module output back to the user's Supabase row via
@@ -2147,56 +2168,52 @@ function formatWeeklyRoadmap(text) {
 
 function formatWeek1(text) {
   if (!text) return '<p style="color:var(--muted)">No content generated.</p>';
-  const days = text.split(/\n(?=DAY\s+\d+\s*[—-])/i);
+  // Posts arrive as "POST N" blocks with POST TYPE / VISUAL DIRECTION /
+  // CAPTION / CROSS-POST / BEST TIME fields (see generateWeekPosts).
+  const blocks = text.split(/\n(?=POST\s+\d+\b)/i).filter(b => /^POST\s+\d+\b/i.test(b.trim()));
+  if (!blocks.length) {
+    // Unknown format — show the raw text rather than an empty week.
+    return '<div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap;">' + escHtml(text.trim()) + '</div>';
+  }
   let html = '<div style="margin-bottom:24px;padding:16px 20px;background:var(--green-sub);border-left:3px solid var(--green);border-radius:3px;">'
-           + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;margin-bottom:4px;">WEEK 1 — 7 POSTS READY TO PUBLISH</div>'
-           + '<div style="font-size:13px;color:var(--muted);">1 post per day · Facebook · All captions written · All visuals directed</div>'
+           + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:2px;margin-bottom:4px;">' + blocks.length + ' POSTS — READY TO PUBLISH</div>'
+           + '<div style="font-size:13px;color:var(--muted);">Facebook-first · 1 Reel + 4 image posts · All captions written · All visuals directed</div>'
            + '</div>';
-  let currentDay = null;
-  days.forEach(block => {
+  const fields = ['POST TYPE','VISUAL DIRECTION','CAPTION','CROSS-POST','BEST TIME'];
+  blocks.forEach(block => {
     const lines = block.trim().split('\n');
-    const header = lines[0].trim();
-    if (/^DAY\s+\d+/i.test(header)) {
-      const dayMatch = header.match(/DAY\s+(\d+)/i);
-      const dayNum = dayMatch ? dayMatch[1] : '?';
-      const platform = header.replace(/DAY\s+\d+\s*[—-]\s*/i, '').trim();
-      const isFacebook = /facebook/i.test(platform);
-      const borderColor = isFacebook ? '#1877F2' : '#E4405F';
-      const platformLabel = isFacebook ? 'FACEBOOK' : 'INSTAGRAM';
-      if (dayNum !== currentDay) {
-        if (currentDay !== null) html += '</div>';
-        html += '<div style="margin-bottom:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:28px;padding-bottom:6px;border-bottom:1px solid var(--border);">DAY ' + dayNum + '</div>';
-        html += '<div>';
-        currentDay = dayNum;
-      }
-      let cardHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ' + borderColor + ';border-radius:4px;padding:16px;overflow:hidden;">';
-      cardHtml += '<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:' + borderColor + ';margin-bottom:12px;">' + platformLabel + '</div>';
-      const fields = ['POST TYPE','VISUAL DIRECTION','CAPTION','BEST TIME'];
-      let remaining = lines.slice(1).join('\n');
-      fields.forEach(field => {
-        const regex = new RegExp(field + ':\\s*([\\s\\S]*?)(?=' + fields.filter(f=>f!==field).map(f=>f+':').join('|') + '|$)');
-        const match = remaining.match(regex);
-        if (match) {
-          const val = match[1].trim();
-          const isCaption = field === 'CAPTION';
-          const isVisual = field === 'VISUAL DIRECTION';
-          cardHtml += '<div style="margin-bottom:10px;">';
-          cardHtml += '<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">' + field + '</div>';
-          if (isCaption) {
-            cardHtml += '<div style="font-size:13px;color:var(--text);line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:3px;">' + escHtml(val) + '</div>';
-          } else if (isVisual) {
-            cardHtml += '<div style="font-size:12px;color:var(--green);line-height:1.6;font-style:italic;">' + escHtml(val) + '</div>';
-          } else {
-            cardHtml += '<div style="font-size:12px;color:var(--muted);line-height:1.5;">' + escHtml(val) + '</div>';
-          }
-          cardHtml += '</div>';
+    const numMatch = lines[0].trim().match(/POST\s+(\d+)/i);
+    const postNum = numMatch ? numMatch[1] : '?';
+    const remaining = lines.slice(1).join('\n');
+    const typeMatch = remaining.match(/POST TYPE:\s*([^\n]*)/i);
+    const postType = typeMatch ? typeMatch[1].trim() : '';
+    const isReel = /reel|video/i.test(postType);
+    const borderColor = isReel ? '#E4405F' : '#1877F2';
+    let cardHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ' + borderColor + ';border-radius:4px;padding:16px;overflow:hidden;margin-bottom:14px;">';
+    cardHtml += '<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:' + borderColor + ';margin-bottom:12px;">POST ' + escHtml(postNum) + (postType ? ' — ' + escHtml(postType.toUpperCase()) : '') + '</div>';
+    fields.forEach(field => {
+      const regex = new RegExp(field + ':\\s*([\\s\\S]*?)(?=' + fields.filter(f=>f!==field).map(f=>f+':').join('|') + '|$)');
+      const match = remaining.match(regex);
+      if (match) {
+        const val = match[1].trim();
+        if (!val) return;
+        const isCaption = field === 'CAPTION';
+        const isVisual = field === 'VISUAL DIRECTION';
+        cardHtml += '<div style="margin-bottom:10px;">';
+        cardHtml += '<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">' + field + '</div>';
+        if (isCaption) {
+          cardHtml += '<div style="font-size:13px;color:var(--text);line-height:1.7;background:var(--surface2);padding:10px 12px;border-radius:3px;">' + escHtml(val) + '</div>';
+        } else if (isVisual) {
+          cardHtml += '<div style="font-size:12px;color:var(--green);line-height:1.6;font-style:italic;">' + escHtml(val) + '</div>';
+        } else {
+          cardHtml += '<div style="font-size:12px;color:var(--muted);line-height:1.5;">' + escHtml(val) + '</div>';
         }
-      });
-      cardHtml += '</div>';
-      html += cardHtml;
-    }
+        cardHtml += '</div>';
+      }
+    });
+    cardHtml += '</div>';
+    html += cardHtml;
   });
-  if (currentDay !== null) html += '</div>';
   return html;
 }
 
@@ -2254,12 +2271,16 @@ function showTabByValue(name) {
 
 // ── PDF DOWNLOAD ─────────────────────────────────────────────────────────────
 function downloadPDF() {
-  // Show all panels before printing
+  // Show all panels and expand collapsed weekly accordions before printing —
+  // closed <details> elements print empty.
   document.querySelectorAll('.out-panel').forEach(p => p.style.display = 'block');
+  const closedWeeks = Array.from(document.querySelectorAll('.out-panel details:not([open])'));
+  closedWeeks.forEach(d => d.setAttribute('open', ''));
   window.print();
-  // Restore tab state after print dialog closes
+  // Restore tab + accordion state after print dialog closes
   setTimeout(() => {
     document.querySelectorAll('.out-panel').forEach(p => p.style.display = '');
+    closedWeeks.forEach(d => d.removeAttribute('open'));
     document.querySelector('.out-panel.active') || document.getElementById('panel-brand').classList.add('active');
   }, 1000);
 }
