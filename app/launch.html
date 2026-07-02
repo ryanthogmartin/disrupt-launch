@@ -1480,11 +1480,15 @@ async function finishGeneration() {
     const result = await persistGeneratedOutput();
     if (result && result.state) state = result.state;
   } catch (e) {
-    console.warn('persist generated output failed:', e);
+    console.warn('persist generated output failed after retries:', e);
     // Fall back to tier from session — Guided still goes to review screen so
     // they don't see raw unreviewed output, Self-Guided still sees their strategy.
     const s = loadSession();
     if (s && s.tier === 'guided') state = 'strategy-under-review';
+    // Don't give up silently: keep re-trying in the background with a visible
+    // banner. Without this, the client sees their strategy once and their
+    // dashboard stays empty forever (found in pre-launch E2E, 2026-07-01).
+    startPersistRescue();
   }
 
   // Fire the admin notification + Sheets log (same for both tiers)
@@ -1677,16 +1681,66 @@ async function retryGeneration() {
 // the authenticated /auth/complete endpoint. This is how the Worker knows
 // to (a) mark intake complete, (b) auto-release for Self-Guided or hold for
 // Guided, and (c) fire the right tier-specific email.
+// Retries transient failures (network blip, worker hiccup) with backoff —
+// a failed persist here means the client's dashboard stays empty forever,
+// so this call must NOT give up on the first error.
 async function persistGeneratedOutput() {
   const s = loadSession();
   if (!s || !s.token) return; // no session — demo/tour flow, skip
-  const res = await fetch(WORKER_BASE + '/auth/complete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: s.token, generatedOutput })
-  });
-  if (!res.ok) throw new Error('persist output failed: ' + res.status);
-  return res.json();
+  const delays = [0, 2000, 8000]; // 3 attempts
+  let lastErr = null;
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
+    try {
+      const res = await fetch(WORKER_BASE + '/auth/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: s.token, generatedOutput })
+      });
+      if (res.ok) return res.json();
+      // 401 = dead session — retrying won't help, surface immediately
+      if (res.status === 401) throw new Error('persist output failed: 401 (session expired)');
+      lastErr = new Error('persist output failed: ' + res.status);
+    } catch (e) {
+      if (/401/.test(String(e.message))) throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('persist output failed');
+}
+
+// Background rescue loop: if the initial persist (with retries) still failed,
+// keep re-trying quietly every 30s while the output screen is open — the
+// modules live in memory, so any later success fully recovers the dashboard.
+// Also shows a visible banner so the client knows not to close the tab.
+var _persistRescueTimer = null;
+function startPersistRescue() {
+  showPersistWarningBanner();
+  let attempts = 0;
+  _persistRescueTimer = setInterval(async () => {
+    attempts++;
+    if (attempts > 20) { clearInterval(_persistRescueTimer); return; } // ~10 min
+    try {
+      const result = await persistGeneratedOutput();
+      if (result && result.ok !== false) {
+        clearInterval(_persistRescueTimer);
+        hidePersistWarningBanner();
+      }
+    } catch (e) { /* keep trying */ }
+  }, 30000);
+}
+
+function showPersistWarningBanner() {
+  if (document.getElementById('persist-warn-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'persist-warn-banner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#F3CE24;color:#0F0B0C;font-family:var(--font-mono,monospace);font-size:12px;letter-spacing:0.5px;padding:10px 16px;text-align:center;';
+  b.innerHTML = '⚠ We’re having trouble saving your strategy to your dashboard — retrying automatically. <strong>Please keep this tab open.</strong> Your strategy has also been sent to the DISRUPT team, so nothing is lost either way.';
+  document.body.appendChild(b);
+}
+function hidePersistWarningBanner() {
+  const b = document.getElementById('persist-warn-banner');
+  if (b) b.remove();
 }
 
 function goBackToForm() {
