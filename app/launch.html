@@ -1964,8 +1964,8 @@ async function generateRoadmap(ctx) {
   // 13 weekly themes (one-liner each), review strategy, milestones.
   // Facebook-first: drop the Instagram section. Cross-posting is mechanical
   // via Meta Business Suite, not a separate strategy.
-  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate the strategic overview for a 90-day Facebook content plan. We're Facebook-first because the funeral home audience (50+ daughters, pre-planners) lives on Facebook. Every post is designed for Facebook; the buyer cross-posts to Instagram via Meta Business Suite when they want extra reach. Structure exactly as follows:\n\nCONTENT STRATEGY OVERVIEW\n[3-4 sentences on the strategic approach for this specific business. Facebook-first. Reference their actual differentiator and persona.]\n\nCONTENT PILLARS\nPILLAR 1: [Name] — [One-line description]\nPILLAR 2: [Name] — [One-line description]\nPILLAR 3: [Name] — [One-line description]\n\nPLATFORM STRATEGY\nFACEBOOK: [Specific strategy: posting frequency (5 posts/week), content mix (videos / Reels / Facebook galleries / photo posts / text posts), tone, what to lean into]\nINSTAGRAM CROSS-POST: [One sentence — "Use Meta Business Suite to mirror Facebook posts to Instagram when relevant. Reels translate directly. Galleries work as Instagram carousels (cap at 10 photos). Skip cross-posting on text-heavy story posts."]\nGOOGLE BUSINESS: [Specific strategy for posts and review generation]\n\nWEEKLY THEMES — MONTHS 1-3\n[Generate 13 weeks. Each week format — keep tight, this is overview only; the full 5 posts per week are generated separately:]\nWEEK [N]: [THEME TITLE]\nFocus: [One sentence on what this week builds toward]\n\nREVIEW GENERATION STRATEGY\n[Specific 4-step plan to generate 10+ Google reviews in the first 30 days]\n\n90-DAY MILESTONES\nDAY 30: [Specific measurable goal]\nDAY 60: [Specific measurable goal]\nDAY 90: [Specific measurable goal]`;
-  generatedOutput.roadmap = await callClaude(SYSTEM, prompt, { maxTokens: 6000 });
+  const prompt = `CLIENT INTELLIGENCE:\n${ctx}\n\nGenerate the strategic overview for a 90-day Facebook content plan. We're Facebook-first because the funeral home audience (50+ daughters, pre-planners) lives on Facebook. Every post is designed for Facebook; the buyer cross-posts to Instagram via Meta Business Suite when they want extra reach. Structure exactly as follows:\n\nCONTENT STRATEGY OVERVIEW\n[3-4 sentences on the strategic approach for this specific business. Facebook-first. Reference their actual differentiator and persona.]\n\nCONTENT PILLARS\nPILLAR 1: [Name] — [One-line description]\nPILLAR 2: [Name] — [One-line description]\nPILLAR 3: [Name] — [One-line description]\n\nPLATFORM STRATEGY\nFACEBOOK: [Specific strategy. DISRUPT delivers 5 fully-built posts every week (1 Reel + 4 image-based posts) — that's the content bank. Recommend a realistic PUBLISHING cadence of 3-5 posts per week calibrated to THIS client's actual capacity: who runs their marketing, their stated video comfort level, team size, budget, and who they said is internally accountable. A solo owner-operator gets a sustainable 3/week priority plan; a staffed team gets the full 5. Always include the weekly Reel in the recommended cadence. If recommending fewer than 5, name WHICH post slots to prioritize and why — the unposted ones stay in their bank for extra weeks. Also cover: tone and what to lean into.]\nINSTAGRAM CROSS-POST: [One sentence — "Use Meta Business Suite to mirror Facebook posts to Instagram when relevant. Reels translate directly. Galleries work as Instagram carousels (cap at 10 photos). Skip cross-posting on text-heavy story posts."]\n\nWEEKLY THEMES — MONTHS 1-3\n[Generate 13 weeks. Each week format — keep tight, this is overview only; the full 5 posts per week are generated separately:]\nWEEK [N]: [THEME TITLE]\nFocus: [One sentence on what this week builds toward]\n\nWEEKLY POST ANGLES GRID\n[For EACH of the 13 weeks, exactly 5 one-line strategic angles — one per post slot. The slot types are FIXED for every week: POST 1 = Photo, POST 2 = Reel (the one video of the week), POST 3 = Facebook Gallery, POST 4 = Photo, POST 5 = Photo. Rules for the grid:\n- Every angle must be executable by THIS client using only services they actually offer, staff they actually named, stories/assets/community ties from their intake. Never assign an angle for a service they don't offer.\n- The Reel angle each week carries that week's theme on camera.\n- Across the 13 weeks, cover: their core differentiators (multiple angles each), pre-need (spread throughout, at least 6 touches, matched to their pre-planner persona), education that dissolves their families' #1 fear, community proof, reviews/testimonials, and aftercare if they offer it.\n- Never repeat an angle. Sequence deliberately: humanity and faces first, differentiation and proof in the middle weeks, pre-need conversion pushes later.\nFormat EXACTLY like this for all 13 weeks:]\nWEEK 1 ANGLES:\n1. [one-line Photo angle]\n2. [one-line Reel angle]\n3. [one-line Facebook Gallery angle]\n4. [one-line Photo angle]\n5. [one-line Photo angle]\n[...repeat through WEEK 13 ANGLES]\n\nREVIEW GENERATION STRATEGY\n[Specific 4-step plan to generate 10+ Google reviews in the first 30 days]\n\n90-DAY MILESTONES\n[Anchor every number to the client's OWN stated baseline and targets from the intake (their current review count, case volume, growth target). No invented percentages.]\nDAY 30: [Specific measurable goal]\nDAY 60: [Specific measurable goal]\nDAY 90: [Specific measurable goal]`;
+  generatedOutput.roadmap = await callClaude(SYSTEM, prompt, { maxTokens: 8000 });
 }
 
 // ── RENDER OUTPUT ────────────────────────────────────────────────────────────
@@ -1984,9 +1984,13 @@ async function generateRoadmap(ctx) {
 // 5. Facebook-first. Cross-post to Instagram via Meta Business Suite.
 // 6. "Facebook Gallery" not "Instagram Carousel". Always.
 //
-// WEEK_POST_ANGLES holds the strategic intent per slot per week. The slot
-// order matches the post-type order above (so POST 2 — the Reel — always
-// gets the angle most suited to a video format).
+// WEEK_POST_ANGLES is the FALLBACK strategic intent per slot per week. The
+// primary source of angles is now the bespoke WEEKLY POST ANGLES GRID that
+// generateRoadmap produces per client (parsed by parseAngleGrid). This table
+// only kicks in for any week whose grid entry is missing or malformed — it
+// guarantees the content plan can never come back empty. Slot order matches
+// the post-type order above (so POST 2 — the Reel — always gets the angle
+// most suited to a video format).
 const WEEK_POST_ANGLES = {
   1:  ['Introduce the business + person behind it. Photo of the building or owner. Build immediate humanity.', 'Reel — owner walks the building/space and lays out the biggest operational differentiator on camera. Make competitor weakness obvious without naming them.', 'Facebook Gallery (5-10 photos) — show what the facility actually looks like inside. Chapel, gathering rooms, reception space, signature details.', 'Address the #1 family fear directly. Photo of staff or interior detail that proves the home eliminates it.', 'Pre-need awareness photo. Speak to the pre-planner persona — peace of mind, gift to family.'],
   2:  ['Photo of an aftercare moment — a hand-written card, a remembrance event detail. Tangible care, not a brochure.', 'Reel — named on-camera staff member shares a moment from the previous month. Build face recognition.', 'Facebook Gallery — most recent grief event or aftercare program (butterfly release, paint class, holiday remembrance).', 'Education photo — a service families assume they understand but don\'t. Caption does the teaching.', 'Soft pre-need photo + invite. No pressure. Open door, not a pitch.'],
@@ -2008,8 +2012,12 @@ const POST_TYPE_SLOTS = ['Photo', 'Reel', 'Facebook Gallery', 'Photo', 'Photo'];
 
 // Generate 5 detailed Facebook posts for ONE week. Called 13 times in
 // parallel by the weekly_posts coordinator. Each post is ready-to-publish.
-async function generateWeekPosts(ctx, weekNum, weekTheme) {
-  const angles = WEEK_POST_ANGLES[weekNum] || WEEK_POST_ANGLES[1];
+// bespokeAngles: this week's 5 angles from the roadmap's client-specific
+// WEEKLY POST ANGLES GRID; the hardcoded table is the safety net.
+async function generateWeekPosts(ctx, weekNum, weekTheme, bespokeAngles) {
+  const angles = (Array.isArray(bespokeAngles) && bespokeAngles.length === 5)
+    ? bespokeAngles
+    : (WEEK_POST_ANGLES[weekNum] || WEEK_POST_ANGLES[1]);
   const slotInstructions = POST_TYPE_SLOTS.map((type, i) =>
     'POST ' + (i + 1) + ' — POST TYPE MUST BE "' + type + '" — Strategic angle: ' + angles[i]
   ).join('\n');
@@ -2054,12 +2062,22 @@ async function generateWeeklyPosts(ctx) {
   // returns thin, the per-week prompt still works without a theme.
   const themes = parseRoadmapThemes(generatedOutput.roadmap || '');
 
+  // Bespoke per-client angle grid from the roadmap. Coordinated in ONE place
+  // (the roadmap sees the whole client) so the 13 parallel week calls can't
+  // overlap or drift. Any week missing from the grid falls back to the
+  // hardcoded WEEK_POST_ANGLES table inside generateWeekPosts.
+  const angleGrid = parseAngleGrid(generatedOutput.roadmap || '');
+  const gridWeeks = Object.keys(angleGrid).length;
+  if (gridWeeks < 13) {
+    console.warn('[weekly_posts] bespoke angle grid has ' + gridWeeks + '/13 weeks — hardcoded fallback covers the rest');
+  }
+
   // Fire all 13 weekly generations in parallel. Promise.allSettled means
   // one week failing doesn't kill the others.
   const tasks = [];
   for (let n = 1; n <= 13; n++) {
     tasks.push(
-      generateWeekPosts(ctx, n, themes[n] || '')
+      generateWeekPosts(ctx, n, themes[n] || '', angleGrid[n])
         .then(text => ({ n, ok: true, text }))
         .catch(err => ({ n, ok: false, err: err.message || String(err) }))
     );
@@ -2072,7 +2090,7 @@ async function generateWeeklyPosts(ctx) {
     console.warn('[weekly_posts] retrying failed weeks:', failed.map(r => r.n));
     const retries = await Promise.all(
       failed.map(r =>
-        generateWeekPosts(ctx, r.n, themes[r.n] || '')
+        generateWeekPosts(ctx, r.n, themes[r.n] || '', angleGrid[r.n])
           .then(text => ({ n: r.n, ok: true, text }))
           .catch(err => ({ n: r.n, ok: false, err: err.message || String(err) }))
       )
@@ -2098,6 +2116,37 @@ async function generateWeeklyPosts(ctx) {
   if (stillFailed.length >= 3) {
     throw new Error('Weekly content failed for ' + stillFailed.length + ' weeks: ' + stillFailed.map(r => 'Week ' + r.n).join(', '));
   }
+}
+
+// Pull the bespoke WEEKLY POST ANGLES GRID out of the roadmap output.
+// Returns { 1: [angle1..angle5], ... } including ONLY weeks that parsed to
+// exactly 5 substantive angles — anything else is dropped so the hardcoded
+// fallback covers it. Tolerant of minor format drift (markdown bullets,
+// "1)" vs "1.", type prefixes like "Photo —").
+function parseAngleGrid(roadmap) {
+  const out = {};
+  if (!roadmap) return out;
+  const chunks = roadmap.split(/WEEK\s+(\d+)\s+ANGLES\s*[:：]/i);
+  // After split: [preamble, "1", "<week 1 block>", "2", "<week 2 block>", ...]
+  for (let i = 1; i < chunks.length; i += 2) {
+    const n = parseInt(chunks[i], 10);
+    if (!(n >= 1 && n <= 13)) continue;
+    // Stop each block at the next ALL-CAPS section header so trailing roadmap
+    // sections (REVIEW GENERATION STRATEGY etc.) can't bleed into week 13.
+    const block = (chunks[i + 1] || '').split(/\n[A-Z][A-Z0-9 &\-—]{8,}\n/)[0];
+    const angles = [];
+    for (const raw of block.split('\n')) {
+      const m = /^\s*[\-\*]?\s*([1-5])[.)]\s*(.+?)\s*$/.exec(raw);
+      if (!m) continue;
+      const slot = parseInt(m[1], 10);
+      let text = m[2].replace(/^\[|\]$/g, '').trim();
+      // Reject unfilled placeholders like "[one-line Photo angle]"
+      if (/^one-line/i.test(text) || text.length < 15) continue;
+      if (slot === angles.length + 1) angles.push(text);
+    }
+    if (angles.length === 5) out[n] = angles;
+  }
+  return out;
 }
 
 // Pull "WEEK N: <theme>" mentions from roadmap output. Returns { 1: 'theme', ... }.
