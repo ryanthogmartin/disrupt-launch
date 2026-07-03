@@ -1827,25 +1827,28 @@ async function generateScripts(arg) {
   // anyway — photos, galleries, and text posts don't get scripted.
   const videoSummary = summarizeVideosForScripts(input.week1 || '');
 
-  const scriptPrompt = [
+  const baseContext = [
     'CLIENT INTELLIGENCE:\n', input.intake || '',
     '\n\n==================================================',
     '\nBRAND GUIDELINES (match this voice EXACTLY — do not invent a new voice):\n', input.brand || '[not available]',
     '\n\n==================================================',
     '\nCUSTOMER PERSONAS (target these specific humans with their specific winning messages):\n', input.personas || '[not available]',
     '\n\n==================================================',
-    '\nVIDEO POSTS ACROSS THE 13-WEEK PLAN (one Reel per week — POST 2 each week — write one script for each):\n', videoSummary || '[not available]',
+    '\nVIDEO POSTS ACROSS THE 13-WEEK PLAN (one Reel per week — POST 2 each week):\n', videoSummary || '[not available]',
     '\n\n==================================================',
     '\n90-DAY ROADMAP OVERVIEW (pillars, platform strategy, weekly themes):\n', input.roadmap || '[not available]',
     '\n\n==================================================',
-    '\n\nYour job: produce production-ready Reel scripts for ALL 13 Reels — one per week. Every Reel is a Facebook post (cross-posted to Instagram Reels). Do not invent generic themes — tie every script to the specific Reel listed for that week above.',
+  ].join('');
+
+  const rulesAndFormat = (startWk, endWk, count) => [
+    '\n\nYour job: produce production-ready Reel scripts for weeks ' + startWk + ' through ' + endWk + ' of the 13-week plan — one script per week. Every Reel is a Facebook post (cross-posted to Instagram Reels). Do not invent generic themes — tie every script to the specific Reel listed for that week above.',
     '\n\n=== HARD RULES ===',
-    '\n1. EXACTLY 13 scripts — one per week (Week 1 through Week 13). Never fewer, never more.',
+    '\n1. EXACTLY ' + count + ' scripts — SCRIPT ' + startWk + ': through SCRIPT ' + endWk + ':, one per week, numbered by WEEK number. Never fewer, never more.',
     '\n2. EVERY script MUST include all 6 sections: HOOK, PROBLEM, CREDIBILITY, PROOF, CTA, DIRECTOR NOTES. Skipping any section is forbidden.',
     '\n3. Write in the client\'s EXACT brand voice from the Brand Guidelines above. If the DO list says "Direct, confident, specific" then write that way. If the DON\'T list forbids "at this difficult time" or "compassionate care" — never use those phrases.',
     '\n4. Target a specific persona per script, using their WINNING MESSAGE and TRUST TRIGGER language verbatim where natural.',
     '\n5. Reference real, specific details from the intake (named staff, specific locations, specific numbers, specific stories). No generic copy.',
-    '\n6. Keep beats TIGHT — 1-3 sentences each. The full 6-section script should land at ~300-400 words total. We need all 13 to fit, so don\'t over-write any one script.',
+    '\n6. Keep beats TIGHT — 1-3 sentences each. The full 6-section script should land at ~300-400 words total.',
     '\n7. SOURCE: must be exactly "Week N Post 2 (Reel)" where N is the week number — so the dashboard can link each Reel task to its script.',
     '\n\n=== FORMAT EACH SCRIPT EXACTLY (use these labels VERBATIM) ===',
     '\n\nSCRIPT {N}: [Title — short, evocative, tied to the week\'s Reel concept]',
@@ -1859,12 +1862,21 @@ async function generateScripts(arg) {
     '\n\nPROOF (25-40 sec): [1-3 sentences. A specific story, fact, or operational detail pulled from the intake.]',
     '\n\nCTA (final 5 sec): [1-2 sentences. One clear action, in the brand voice, echoing the persona\'s WINNING MESSAGE where natural.]',
     '\n\nDIRECTOR NOTES: [1-2 sentences. Specific to THIS client — actual location, named staff member on camera, what B-roll to grab.]',
-    '\n\n---\n\nReturn SCRIPT 1: through SCRIPT 13: in order. No preamble. No closing. No evergreen scripts. EXACTLY 13.',
+    '\n\n---\n\nReturn SCRIPT ' + startWk + ': through SCRIPT ' + endWk + ': in order. No preamble. No closing. No evergreen scripts. EXACTLY ' + count + '.',
   ].join('');
 
-  // 13 scripts × ~400 tokens each = ~5200 output tokens. 8000 cap leaves
-  // headroom for the AI to occasionally over-run on a beat.
-  generatedOutput.scripts = await callClaude(SYSTEM, scriptPrompt, { maxTokens: 8000 });
+  // Anthropic's API edge hard-kills non-streaming requests at ~100 seconds
+  // (returns a Cloudflare "error code: 524" text body). A single 13-script
+  // call (~5-8K output tokens) reliably exceeds that for clients with rich
+  // intakes, so it could NEVER complete no matter how many times it retried
+  // (found in E2E 2026-07-02). Generate in 3 parallel chunks (~4-5 scripts
+  // each, well under the limit) and stitch in week order — numbering and
+  // SOURCE lines stay week-aligned, so dashboard script matching is unchanged.
+  const CHUNKS = [[1, 5], [6, 9], [10, 13]];
+  const parts = await Promise.all(CHUNKS.map(([a, b]) =>
+    callClaude(SYSTEM, baseContext + rulesAndFormat(a, b, b - a + 1), { maxTokens: 3500 })
+  ));
+  generatedOutput.scripts = parts.map(p => (p || '').trim()).join('\n\n');
 }
 
 // Compact video-only summary of the 13-week × 5-post content plan, formatted
